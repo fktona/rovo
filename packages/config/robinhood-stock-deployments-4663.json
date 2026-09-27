@@ -1,0 +1,385 @@
+{
+  "sourceUrl": "https://api.robinhood.com/rhj/assets",
+  "fetchedAt": "2026-09-26T13:29:56.081Z",
+  "chainId": 4663,
+  "assets": [
+    {
+      "id": "0x00000000000000000000000000000000915f477416294f5099a5e0e09f327ce5",
+      "symbol": "NVDA",
+      "address": "0xd0601CE157Db5bdC3162BbaC2a2C8aF5320D9EEC",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000001aa9c9cc0bf34c5e95cfe7168463d310",
+      "symbol": "SPCX",
+      "address": "0x4a0E65A3EcceC6dBe60AE065F2e7bb85Fae35eEa",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x0000000000000000000000000000000053b69e2076884cc9ae2ada9bc7095df3",
+      "symbol": "GOOGL",
+      "address": "0x2e0847E8910a9732eB3fb1bb4b70a580ADAD4FE3",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000cfece3244ea34bb29414dd9488b32d9f",
+      "symbol": "TSLA",
+      "address": "0x322F0929c4625eD5bAd873c95208D54E1c003b2d",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000c5ac9420091c4f9eb3ff1fdd1d2b60c6",
+      "symbol": "GME",
+      "address": "0x1b0E319c6A659F002271B69dB8A7df2F911c153E",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000c2425be3658540dd8e2424cbf3c5c649",
+      "symbol": "AAPL",
+      "address": "0xaF3D76f1834A1d425780943C99Ea8A608f8a93f9",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000001c6f27a62789417d8ed359ed3c2d3da1",
+      "symbol": "SPY",
+      "address": "0x117cc2133c37B721F49dE2A7a74833232B3B4C0C",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x0000000000000000000000000000000046e46cc63fe842ebbdfe6187bda403d6",
+      "symbol": "SNDK",
+      "address": "0xB90A19fF0Af67f7779afF50A882A9CfF42446400",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x0000000000000000000000000000000086aeaac3c7d9422c90f6fd41aff0eaf7",
+      "symbol": "AMD",
+      "address": "0x86923f96303D656E4aa86D9d42D1e57ad2023fdC",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000004f508d5e2a7042299694d85c2f362ad2",
+      "symbol": "AMZN",
+      "address": "0x12f190a9F9d7D37a250758b26824B97CE941bF54",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000307bb0113ca54f93adf80f4ff2bf681a",
+      "symbol": "MSFT",
+      "address": "0xe93237C50D904957Cf27E7B1133b510C669c2e74",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000343e7beca03644bcba2e50b8236784f5",
+      "symbol": "META",
+      "address": "0xc0D6457C16Cc70d6790Dd43521C899C87ce02f35",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000005047f8f8a1a34a9ebee52a4155570807",
+      "symbol": "CRCL",
+      "address": "0xdF0992E440dD0be65BD8439b609d6D4366bf1CB5",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000970b46dbdece4ae4958a53815e62a85a",
+      "symbol": "COIN",
+      "address": "0x6330D8C3178a418788dF01a47479c0ce7CCF450b",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000007757415150a94b50a879cdc04dc90664",
+      "symbol": "MU",
+      "address": "0xfF080c8ce2E5feadaCa0Da81314Ae59D232d4afD",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000007454a90b4aab491389ce9fa3c485de42",
+      "symbol": "PLTR",
+      "address": "0x894E1EC2D74FFE5AEF8Dc8A9e84686acCB964F2A",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x0000000000000000000000000000000032d0504fcc1a48ff8ac9b29185578559",
+      "symbol": "TTWO",
+      "address": "0x5e81213613b6B86EaB4c6c50d718d34359459786",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000c4aa88df91204d23a4ff43cd0768298d",
+      "symbol": "RIVN",
+      "address": "0xB1BF26c1D20ff267A4f93550d1E0d06ac40a114B",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000e0e44220991548d0b030699e3062c2a7",
+      "symbol": "COST",
+      "address": "0x4EA005168D7F09a7A0Ba9D1DEf21a479950E44C2",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000d8a566c761e845fc8adffb9b2295c3ee",
+      "symbol": "DJT",
+      "address": "0x1D11f0496982706C5e14A514D4E79F2e6BdE4516",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000c91ba6e57a1c493f99cae2174e43c86e",
+      "symbol": "MSTR",
+      "address": "0xec262a75e413fAfD0dF80480274532C79D42da09",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000002470b933c52d47ccad017ed9ee80c9ed",
+      "symbol": "QQQ",
+      "address": "0xD5f3879160bc7c32ebb4dC785F8a4F505888de68",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000003bc66ed8f2314091a365604b4c01aef5",
+      "symbol": "RDDT",
+      "address": "0x05b37Fb53A299a1b874A619e1c4C404D52C36F4C",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000e56a9632bdd64f7ea0745b48971ad047",
+      "symbol": "HIMS",
+      "address": "0xCceE82fE024c36fA15E1005edE3E9e4787e23D09",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000551774850f194601b6cdefc8c802696d",
+      "symbol": "BB",
+      "address": "0x48E39E56aCdbA37b09020C0b734A613C9a2f100A",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000001db61e88b20b481093c556e4d07195b5",
+      "symbol": "GLD",
+      "address": "0xC9a981FEE1F9DEc688bb123ccDeCc63D0deBFC4e",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000ac7debdd1135468e9b6a35678f81bb28",
+      "symbol": "LLY",
+      "address": "0x8005d266423c7ea827372c9c864491e5786600ea",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x0000000000000000000000000000000025191a136aab4e5fa41b67ec3218a093",
+      "symbol": "WYFI",
+      "address": "0x9e7ABD3C9139D14E4c86DcE0e455AAB7A0C2FB3E",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000002e890a0884474abd86ba66b19722e827",
+      "symbol": "TSM",
+      "address": "0x58FfE4a942d3885bAa22D7520691F611EF09e7AA",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000eed533334fe84ce08253d5b1dcff7373",
+      "symbol": "RBLX",
+      "address": "0xF0C4BF4C582cb3836e98394b1d4e7B7281101bE8",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000002b98fc3881db4479b3827d5ca058d31a",
+      "symbol": "SKHY",
+      "address": "0x84CAb63bc87912E71ad199ff14A0bA45de68FeF8",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x0000000000000000000000000000000014eaef73a2c44d62b7952cfd0a44ff51",
+      "symbol": "DELL",
+      "address": "0x941AE714EC6D8130c7B75d67160Ca08f1e7d11Dd",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000949bd039a8ae465d9cf9336068188b55",
+      "symbol": "USO",
+      "address": "0xa30FA36Db767ad9eD3f7a60fC79526fB4d56D344",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000002993bb34578a4b92b8addda0fc4d697b",
+      "symbol": "SNAP",
+      "address": "0xF6589F11Bc40b669e584073F428B05562F568733",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000005b0a57398f2f4322b011fb98da1f785f",
+      "symbol": "LULU",
+      "address": "0x4e62068525Ab11FE768e29dfD00ef909B9803016",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000008616857c3143457db8534cc7ccac1420",
+      "symbol": "FIG",
+      "address": "0x41F4267525a8AFf329540eF24fD83d9044758B33",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000645f1b5c9e1a4a0e8fa96d05e16df733",
+      "symbol": "MRNA",
+      "address": "0x43B07D15cE533bEc5476d70C22a78a1B2B662155",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000fb3ae5faa7f7465a95815518c4cd7a8b",
+      "symbol": "PFE",
+      "address": "0x7066A64c24e4206CD62E83bf198c1E7EB361F51e",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000aa33b104a54c4de08cc929fb8e8af349",
+      "symbol": "MRVL",
+      "address": "0x62fd0668e10D8B72339BE2DCF7643001688ff13B",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000b1ab18e03806432eac8895cdd289a769",
+      "symbol": "JNJ",
+      "address": "0x03DfbBE0AC4E7bCDaFd08eD41A400326B77D8c80",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000c40c1aabe3514588ae86defffe868021",
+      "symbol": "AMC",
+      "address": "0x05a3d1Cd21d0C88145E82600E62e7E496e0F222B",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000005f7e82ad6e4c4b60ba76497863fe4a67",
+      "symbol": "SGOV",
+      "address": "0x92FD66527192E3e61d4DDd13322Aa222DE86F9B5",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000006ef9da606f504495ad7de6a7a58b87cd",
+      "symbol": "BABA",
+      "address": "0xad25Ac6C84D497db898fa1E8387bf6Af3532a1c4",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000f87aee91942940d0acf2e657187332af",
+      "symbol": "INDA",
+      "address": "0xACEF2e09adb47aD6aBeBAD9fF06689E60615C2B6",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000c0d3fe37e35240d1a0f311a07e2b9fc4",
+      "symbol": "IBM",
+      "address": "0x980dcf6766FA79f5Cf0c4AAdb3ab477ff15a9619",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000500f14b2a92f44d6998e0e2b9cc9387e",
+      "symbol": "NFLX",
+      "address": "0xE0444EF8BF4eD74f74FD73686e2ddF4C1c5591E8",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000006b598b911bbf43ee8ca6be4dd7267f6d",
+      "symbol": "BULL",
+      "address": "0xceF9027c7d6985b85f0BA431125073529A947A68",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000002ea76ec420fa43ab81d6734184f7058a",
+      "symbol": "NU",
+      "address": "0x408c14038a04f7bD235329E26d2bf569ee20e250",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000ddf030d4e25046cab85b3d8c7cd86553",
+      "symbol": "SLV",
+      "address": "0x411eFb0E7f985935DAec3D4C3ebaEa0d0AD7D89f",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000b82496d605ca4b019c9200daa049f52f",
+      "symbol": "SHOP",
+      "address": "0xF53F66751B1Eff985311b693531E3290F600c410",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000d73a53e43ed744d4b5d42c5293ba51ad",
+      "symbol": "BE",
+      "address": "0x822CC93fFD030293E9842c30BBD678F530701867",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000952cedaaab6e4593b884e68a4efbf481",
+      "symbol": "F",
+      "address": "0x25C288E6D899b9BC30160965aD9644c67e73bE0C",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000413cbb2a5e924576a297ccb67c272298",
+      "symbol": "UPS",
+      "address": "0xf23250dac154D05Bb671CB0d0eBEf3c635c79CE2",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000002eb75a2c20d7423881b4f812c27d0abe",
+      "symbol": "INTC",
+      "address": "0xc72b96e0E48ecd4DC75E1e45396e26300BC39681",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000002087239447ce4fcb8c6194c8941d287c",
+      "symbol": "SNOW",
+      "address": "0xBa0CAB75495255d0cB58E22B648bFED4ECD1F47E",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x0000000000000000000000000000000047129a8e0f8f4091841e4004bfa08013",
+      "symbol": "BA",
+      "address": "0x4D21483a44Bf67a86b77E3dA301411880797D452",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000005cca09f06be14aea89a8ea6265026644",
+      "symbol": "LMT",
+      "address": "0x329fcACEb9AD6F9580DD5F643fed0646900D043c",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000008a8710f26e424b2dbc1f6b5de9f267b8",
+      "symbol": "EWY",
+      "address": "0x7f0aBeF0C07280F82c6a08ead09dEd6BAE2C13Fc",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x0000000000000000000000000000000068576a5b6aee4a6bbc9f0d91f47e3918",
+      "symbol": "CEG",
+      "address": "0xaE517A2903E68bd929Dfd15be875F8369D53e94a",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000311078f293cf441789d7bc7eb9480228",
+      "symbol": "RCAT",
+      "address": "0xFDE6b5d9BB419B10C23268c74e369AbFF39C0460",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000007cacd0cd4c0547d480e89459e648592b",
+      "symbol": "RKLB",
+      "address": "0x3b14C39E89D60D627b42a1A4CA45b5bb45Fc12e2",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x000000000000000000000000000000009448faa0b7c14ea798a7787a8cb9db5a",
+      "symbol": "QUBT",
+      "address": "0x59818904ab4cE163b3cE4FfB64f2D6Ca02c434B4",
+      "status": "ASSET_STATUS_ACTIVE"
+    },
+    {
+      "id": "0x00000000000000000000000000000000c8325c5c9c7e4ca2a3d8344500c5c483",
+      "symbol": "NET",
+      "address": "0x116F00968269B7bfbaD4109cE591d6E74c0601d4",
+      "status": "ASSET_STATUS_ACTIVE"
+    }
+  ]
+}

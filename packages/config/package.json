@@ -1,0 +1,17 @@
+{
+  "name": "@rovo/config",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "viem": "^2.37.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}

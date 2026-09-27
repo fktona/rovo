@@ -1,0 +1,37 @@
+name: rovo
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: rovo
+      POSTGRES_PASSWORD: ${ROVO_POSTGRES_PASSWORD:-rovo}
+      POSTGRES_DB: rovo
+    ports:
+      - "127.0.0.1:${ROVO_POSTGRES_PORT:-5433}:5432"
+    volumes:
+      - rovo_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U rovo -d rovo"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:${ROVO_REDIS_PORT:-6379}:6379"
+    volumes:
+      - rovo_redis:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+volumes:
+  rovo_postgres:
+  rovo_redis:

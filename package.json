@@ -1,0 +1,23 @@
+{
+  "name": "rovo",
+  "private": true,
+  "packageManager": "pnpm@10.26.0",
+  "scripts": {
+    "build": "pnpm -r --if-present build && node -e \"console.log('workspace build passed')\"",
+    "typecheck": "pnpm -r --if-present typecheck && node -e \"console.log('workspace typecheck passed')\"",
+    "test": "pnpm -r --if-present test && node -e \"console.log('backend tests passed')\"",
+    "contracts:build": "node scripts/verify-contracts.mjs --compile-only",
+    "contracts:test": "node scripts/verify-contracts.mjs",
+    "db:generate": "pnpm --filter @rovo/database generate",
+    "dev:api": "node --env-file=.env --import tsx --watch apps/api/src/server.ts",
+    "dev:web": "pnpm --filter @rovo/web dev",
+    "dev:indexer": "pnpm --filter @rovo/indexer dev",
+    "dev:workers": "pnpm --filter @rovo/workers dev"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}

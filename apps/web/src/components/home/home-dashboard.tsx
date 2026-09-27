@@ -1,0 +1,770 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { formatUnits } from "viem";
+import { AssetIcon, icons } from "./assets";
+import type { Pair, Token } from "./data";
+import { useLaunches } from "@/hooks/useRovoQueries";
+import { pairChoices } from "@/lib/pairs";
+import { formatUsd } from "@/lib/token-market";
+import { styles } from "./styles";
+import { useAppSearch } from "../shell/app-shell";
+
+const views = [
+  { label: "Trending", icon: icons.trending, width: 22, height: 12 },
+  { label: "New", icon: icons.new, width: 19, height: 19 },
+  { label: "Graduated", icon: icons.graduated, width: 19, height: 19 },
+  { label: "Highest Vault", icon: icons.vault, width: 19, height: 19 },
+] as const;
+
+type View = (typeof views)[number]["label"];
+
+const creatorsPair: Pair = { label: "Creators", icon: icons.creators };
+const featuredPairs: Pair[] = pairChoices.slice(0, 10).map((choice) => ({
+  label: choice.symbol,
+  icon: choice.iconUrl,
+}));
+
+function PairIcon({ pair }: { pair: Pair }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return (
+    <img
+      src={pair.icon}
+      alt=""
+      width={22}
+      height={22}
+      className={`${pair.label === "Creators" ? "size-7" : "size-[22px]"} shrink-0 object-contain`}
+    />
+  );
+}
+
+function PairFilters({
+  selected,
+  onSelect,
+}: {
+  selected: string;
+  onSelect: (value: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+  const searchId = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
+  const extra =
+    selected &&
+    selected !== "Creators" &&
+    !featuredPairs.some((pair) => pair.label === selected)
+      ? {
+          label: selected,
+          icon:
+            pairChoices.find((choice) => choice.symbol === selected)?.iconUrl ??
+            icons.logoMark,
+        }
+      : null;
+  const chips = extra
+    ? [creatorsPair, ...featuredPairs, extra]
+    : [creatorsPair, ...featuredPairs];
+  const matches = pairChoices.filter((choice) => {
+    const needle = query.trim().toLowerCase();
+    if (!needle) return true;
+    return (
+      choice.symbol.toLowerCase().includes(needle) ||
+      choice.name.toLowerCase().includes(needle)
+    );
+  });
+
+  useEffect(() => {
+    if (!open) return;
+    const onPointer = (event: MouseEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setOpen(false);
+    };
+    window.addEventListener("mousedown", onPointer);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("mousedown", onPointer);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const choose = (symbol: string) => {
+    onSelect(symbol);
+    setQuery("");
+    setOpen(false);
+  };
+
+  return (
+    <div className="flex min-w-0 flex-1 items-center gap-3">
+      <div ref={rootRef} className="relative shrink-0">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-haspopup="listbox"
+          onClick={() => setOpen((value) => !value)}
+          className="inline-flex h-11 items-center gap-1 border-r border-[#383838] pr-3 text-base font-medium md:border-0 md:pr-0"
+        >
+          All
+          <AssetIcon src={icons.caret} width={16} height={16} />
+        </button>
+        {open && (
+          <div className="absolute left-0 top-full z-30 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-[#383838] bg-[#111] p-2 shadow-xl">
+            <label className="sr-only" htmlFor={searchId}>
+              Search pair tokens
+            </label>
+            <input
+              id={searchId}
+              autoFocus
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              placeholder="Search pair tokens"
+              className="h-10 w-full rounded-[10px] bg-[#191919] px-3 text-sm text-white outline-none placeholder:text-[#7f7f7f]"
+            />
+            <ul
+              role="listbox"
+              aria-label="Pair tokens"
+              className="mt-2 max-h-72 overflow-y-auto"
+            >
+              <li>
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={selected === "" || selected === "Creators"}
+                  onClick={() => choose("Creators")}
+                  className={`flex w-full items-center rounded-lg px-2 py-2 text-left text-sm ${selected === "" || selected === "Creators" ? "bg-[#191919] text-[#ccff00]" : "hover:bg-[#191919]"}`}
+                >
+                  All pairs
+                </button>
+              </li>
+              {matches.map((choice) => (
+                <li key={choice.address}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={selected === choice.symbol}
+                    onClick={() => choose(choice.symbol)}
+                    className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm ${selected === choice.symbol ? "bg-[#191919] text-[#ccff00]" : "hover:bg-[#191919]"}`}
+                  >
+                    <PairIcon
+                      pair={{ label: choice.symbol, icon: choice.iconUrl }}
+                    />
+                    <span className="font-medium">{choice.symbol}</span>
+                    <span className="truncate text-[#737373]">
+                      {choice.name}
+                    </span>
+                  </button>
+                </li>
+              ))}
+              {matches.length === 0 && (
+                <li className="px-2 py-3 text-sm text-[#737373]">
+                  No pair tokens match.
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
+      </div>
+      <div
+        className="flex min-w-0 flex-1 items-center gap-3 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        aria-label="Paired asset filters"
+      >
+        {chips.map((pair) => (
+          <button
+            key={pair.label}
+            type="button"
+            aria-pressed={selected === pair.label}
+            onClick={() => onSelect(selected === pair.label ? "" : pair.label)}
+            className={`flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2 text-sm ${selected === pair.label ? "bg-[#202020] text-[#ccff00]" : "text-white/80"}`}
+          >
+            <PairIcon pair={pair} />
+            {pair.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ViewTabs({
+  selected,
+  onSelect,
+}: {
+  selected: View;
+  onSelect: (value: View) => void;
+}) {
+  return (
+    <div className={styles.viewTabs} role="tablist" aria-label="Token views">
+      {views.map((view) => (
+        <button
+          key={view.label}
+          type="button"
+          role="tab"
+          aria-selected={selected === view.label}
+          className={`${styles.viewTab} ${selected === view.label ? styles.viewTabActive : ""}`}
+          onClick={() => onSelect(view.label)}
+        >
+          <AssetIcon src={view.icon} width={view.width} height={view.height} />
+          {view.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function formatCreated(value: string | undefined) {
+  const date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.getTime())) return { created: "—", age: "" };
+  const minutes = Math.max(0, Math.floor((Date.now() - date.getTime()) / 60000));
+  const hours = Math.floor(minutes / 60);
+  const days = Math.floor(hours / 24);
+  const months = Math.floor(days / 30);
+  const created =
+    minutes < 1 ? "just now"
+    : minutes < 60 ? `${minutes} ${minutes === 1 ? "min" : "mins"} ago`
+    : hours < 24 ? `${hours} ${hours === 1 ? "hr" : "hrs"} ago`
+    : days < 30 ? `${days} ${days === 1 ? "day" : "days"} ago`
+    : `${months} ${months === 1 ? "mo" : "mos"} ago`;
+  return { created, age: "" };
+}
+
+type CreatorFeeResponse = {
+  earnedForToken: string;
+  quoteAsset: { symbol: string; decimals: number };
+  usdValue?: number;
+};
+
+function formatQuote(amount: string, decimals: number, symbol: string) {
+  if (
+    !/^\d+$/.test(amount) ||
+    !Number.isInteger(decimals) ||
+    decimals < 0 ||
+    decimals > 255 ||
+    !symbol
+  ) {
+    return "—";
+  }
+  const [whole, fraction = ""] = formatUnits(BigInt(amount), decimals).split(".");
+  const trimmed = fraction.slice(0, 4).replace(/0+$/, "");
+  return `${trimmed ? `${whole}.${trimmed}` : whole} ${symbol}`;
+}
+
+function formatCreatorFee(fee: CreatorFeeResponse) {
+  if (typeof fee.usdValue === "number") return formatUsd(fee.usdValue);
+  return formatQuote(
+    fee.earnedForToken,
+    fee.quoteAsset.decimals,
+    fee.quoteAsset.symbol,
+  );
+}
+
+type MarketResponse = {
+  available?: boolean;
+  marketCap?: string;
+  quoteDecimals?: number;
+  quoteSymbol?: string;
+  marketCapUsd?: number;
+  phase?: number;
+};
+
+type MarketSnapshot = {
+  label: string;
+  usd: number | null;
+  phase: number | null;
+};
+
+type FeeSnapshot = {
+  label: string;
+  usd: number | null;
+};
+
+const emptyMarket: MarketSnapshot = { label: "—", usd: null, phase: null };
+const emptyFee: FeeSnapshot = { label: "—", usd: null };
+
+function formatMarket(market: MarketResponse) {
+  if (!market.available) return "—";
+  if (typeof market.marketCapUsd === "number") return formatUsd(market.marketCapUsd);
+  if (
+    market.marketCap == null ||
+    market.quoteDecimals == null ||
+    !market.quoteSymbol
+  ) {
+    return "—";
+  }
+  return formatQuote(market.marketCap, market.quoteDecimals, market.quoteSymbol);
+}
+
+function useLoadedValues<T>(
+  tokens: string[],
+  load: (token: string) => Promise<T>,
+  fallback: T,
+) {
+  const key = tokens.join(",");
+  const [values, setValues] = useState<Record<string, T>>({});
+  const [settledKey, setSettledKey] = useState("");
+  useEffect(() => {
+    if (!key) return;
+    let cancelled = false;
+    void Promise.all(key.split(",").map(async (token) => {
+      try {
+        return [token.toLowerCase(), await load(token)] as const;
+      } catch {
+        return [token.toLowerCase(), fallback] as const;
+      }
+    })).then((rows) => {
+      if (!cancelled) {
+        setValues(Object.fromEntries(rows));
+        setSettledKey(key);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [key, load, fallback]);
+  return { values, loading: key !== "" && key !== settledKey };
+}
+
+function useCreatorFees(tokens: string[]) {
+  const load = useMemo(
+    () => async (token: string): Promise<FeeSnapshot> => {
+      const response = await fetch(`/api/creator-fees/${token}`);
+      if (!response.ok) return emptyFee;
+      const fee = (await response.json()) as CreatorFeeResponse;
+      return {
+        label: formatCreatorFee(fee),
+        usd: typeof fee.usdValue === "number" ? fee.usdValue : null,
+      };
+    },
+    [],
+  );
+  return useLoadedValues(tokens, load, emptyFee);
+}
+
+function useTokenMarkets(tokens: string[]) {
+  const load = useMemo(
+    () => async (token: string): Promise<MarketSnapshot> => {
+      const response = await fetch(`/api/market/${token}`);
+      if (!response.ok) return emptyMarket;
+      const market = (await response.json()) as MarketResponse;
+      return {
+        label: formatMarket(market),
+        usd: typeof market.marketCapUsd === "number" ? market.marketCapUsd : null,
+        phase: typeof market.phase === "number" ? market.phase : null,
+      };
+    },
+    [],
+  );
+  return useLoadedValues(tokens, load, emptyMarket);
+}
+
+function rankValue(value: number | null) {
+  return value == null || !Number.isFinite(value) ? Number.NEGATIVE_INFINITY : value;
+}
+
+function arrangeTokens(tokens: Token[], view: View) {
+  const ranked = [...tokens];
+  if (view === "New") {
+    ranked.sort((a, b) => b.launchedAt - a.launchedAt);
+    return ranked;
+  }
+  if (view === "Graduated") {
+    return ranked
+      .filter((token) => token.graduated)
+      .sort((a, b) => rankValue(b.marketCapUsd) - rankValue(a.marketCapUsd));
+  }
+  if (view === "Highest Vault") {
+    ranked.sort((a, b) => rankValue(b.creatorFeeUsd) - rankValue(a.creatorFeeUsd));
+    return ranked;
+  }
+  ranked.sort((a, b) => rankValue(b.marketCapUsd) - rankValue(a.marketCapUsd));
+  return ranked;
+}
+
+function MetricValue({
+  value,
+  className,
+}: {
+  value: string | null;
+  className?: string;
+}) {
+  if (value == null) {
+    return <span className="shimmer inline-block h-4 w-16 rounded" aria-hidden />;
+  }
+  return <strong className={className}>{value}</strong>;
+}
+
+function LoadingRows() {
+  return (
+    <div className={styles.tableBody} role="rowgroup" aria-busy="true">
+      {Array.from({ length: 4 }, (_, index) => (
+        <div key={index} className={styles.tokenRow} role="row">
+          <div className={styles.tokenIdentity} role="cell">
+            <span className="shimmer size-16 shrink-0 rounded-[10px] sm:size-20 lg:size-24" />
+            <span className="flex min-w-0 flex-col gap-2">
+              <span className="shimmer h-4 w-28 rounded" />
+              <span className="shimmer h-3 w-16 rounded" />
+            </span>
+          </div>
+          <span className="shimmer h-4 w-16 rounded" role="cell" />
+          <span className="shimmer h-4 w-16 rounded" role="cell" />
+          <span className="shimmer h-4 w-20 rounded" role="cell" />
+          <span className="shimmer h-4 w-14 rounded" role="cell" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function TokenRow({ token }: { token: Token }) {
+  return (
+    <Link href={`/token/${token.id}`} className={styles.tokenRow} role="row">
+      <div className={styles.tokenIdentity} role="cell">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={token.image}
+          alt=""
+          className={styles.tokenImage}
+          width={97}
+          height={97}
+          referrerPolicy="no-referrer"
+        />
+        <div className={styles.tokenNames}>
+          <strong>{token.name}</strong>
+          <span>{token.symbol}</span>
+        </div>
+      </div>
+      <div className={styles.metric} role="cell">
+        <span className={styles.metricLabel}>MCAP</span>
+        <MetricValue value={token.marketCap} className={styles.marketCap} />
+      </div>
+      {/*
+      <div className={styles.metric} role="cell">
+        <span className={styles.metricLabel}>24h Vol</span>
+        <strong className={styles.metricValue}>{token.volume24h}</strong>
+      </div>
+      */}
+      <div className={styles.metric} role="cell">
+        <span className={styles.metricLabel}>Creator fee</span>
+        <MetricValue value={token.creatorFee} className={styles.marketCap} />
+      </div>
+      <div className={`${styles.metric} ${styles.dateCell}`} role="cell">
+        <span className={styles.metricLabel}>Date Created</span>
+        <strong className={styles.metricValue}>{token.created}</strong>
+      </div>
+      {/*
+      <div className={styles.metric} role="cell">
+        <span className={styles.metricLabel}>24h</span>
+        <strong className={styles.change}>{token.change24h}</strong>
+      </div>
+      */}
+      <div className={styles.metric} role="cell">
+        <span className={styles.metricLabel}>Paired with</span>
+        <div className={styles.pairCell}>
+          <PairIcon pair={token.pair} />
+          <span>{token.pair.label}</span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function EmptyTokens({
+  filtered,
+  onClear,
+}: {
+  filtered: boolean;
+  onClear: () => void;
+}) {
+  return (
+    <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
+      <span className="flex size-16 items-center justify-center rounded-2xl border border-[#383838] bg-[#191919] [&_img]:size-8">
+        <AssetIcon src={icons.logoMark} width={32} height={32} />
+      </span>
+      <h2 className="mt-5 text-lg font-semibold text-white">
+        {filtered ? "No tokens match" : "No tokens yet"}
+      </h2>
+      <p className="mt-2 max-w-sm text-sm leading-6 text-[#737373]">
+        {filtered
+          ? "Nothing in this view matches your search or filters."
+          : "Profile tokens launched on Rovo will show up here."}
+      </p>
+      {filtered ? (
+        <button
+          type="button"
+          onClick={onClear}
+          className="mt-6 rounded-[10px] border border-[#383838] bg-[#191919] px-4 py-2 text-sm font-medium text-white hover:border-[#ccff00] hover:text-[#ccff00]"
+        >
+          Clear filters
+        </button>
+      ) : (
+        <Link
+          href="/launch"
+          className="mt-6 rounded-[10px] bg-[#ccff00] px-4 py-2 text-sm font-medium text-black hover:bg-[#d8ff43]"
+        >
+          Launch a token
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function MobileHome({
+  tokens,
+  selectedPair,
+  onPairSelect,
+  view,
+  onView,
+  filtered,
+  onClear,
+  loading,
+}: {
+  tokens: Token[];
+  selectedPair: string;
+  onPairSelect: (value: string) => void;
+  view: View;
+  onView: (value: View) => void;
+  filtered: boolean;
+  onClear: () => void;
+  loading: boolean;
+}) {
+  return (
+    <main className="min-h-full bg-black px-4 pb-8 text-white md:hidden">
+      <div className="flex items-center gap-3 pt-6">
+        <PairFilters selected={selectedPair} onSelect={onPairSelect} />
+        <Link
+          href="/launch"
+          aria-label="Launch a token"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#ccff00] text-3xl font-light leading-none text-black"
+        >
+          +
+        </Link>
+      </div>
+
+      <div className="mt-4">
+        <ViewTabs selected={view} onSelect={onView} />
+      </div>
+
+      <div key={view} aria-label="Tokens" className="motion-content mt-2">
+        {loading &&
+          tokens.length === 0 &&
+          Array.from({ length: 4 }, (_, index) => (
+            <div
+              key={index}
+              className="flex min-h-[86px] items-center gap-3 border-b border-[#252525] py-3"
+              aria-hidden
+            >
+              <span className="shimmer size-[54px] shrink-0 rounded-xl" />
+              <span className="flex min-w-0 flex-1 flex-col gap-2">
+                <span className="shimmer h-4 w-28 rounded" />
+                <span className="shimmer h-3 w-16 rounded" />
+              </span>
+              <span className="flex shrink-0 flex-col items-end gap-2">
+                <span className="shimmer h-4 w-16 rounded" />
+                <span className="shimmer h-3 w-12 rounded" />
+              </span>
+            </div>
+          ))}
+        {tokens.map((token) => (
+          <Link
+            key={token.id}
+            href={`/token/${token.id}`}
+            className="flex min-h-[86px] items-center gap-3 border-b border-[#252525] py-3"
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={token.image}
+              alt=""
+              width={54}
+              height={54}
+              className="size-[54px] shrink-0 rounded-xl object-cover"
+              referrerPolicy="no-referrer"
+            />
+            <div className="min-w-0 flex-1">
+              <strong className="block truncate text-base leading-tight">
+                {token.name}
+              </strong>
+              <span className="mt-1 block truncate text-sm text-[#888]">
+                {token.symbol}
+              </span>
+            </div>
+            <div className="shrink-0 text-right">
+              <MetricValue
+                value={token.marketCap}
+                className="block text-base leading-tight text-[#ccff00]"
+              />
+              <span className="mt-1 block text-sm font-medium text-[#888]">
+                MCAP
+              </span>
+              <MetricValue
+                value={token.creatorFee}
+                className="mt-1 block text-sm leading-tight"
+              />
+              <span className="block text-xs font-medium text-[#888]">
+                Creator fee
+              </span>
+            </div>
+          </Link>
+        ))}
+        {tokens.length === 0 && !loading && (
+          <EmptyTokens filtered={filtered} onClear={onClear} />
+        )}
+      </div>
+    </main>
+  );
+}
+
+function TokenTable({
+  tokens,
+  view,
+  onView,
+  filtered,
+  onClear,
+  loading,
+}: {
+  tokens: Token[];
+  view: View;
+  onView: (value: View) => void;
+  filtered: boolean;
+  onClear: () => void;
+  loading: boolean;
+}) {
+  return (
+    <section className={styles.tablePanel} aria-label="Tokens">
+      <ViewTabs selected={view} onSelect={onView} />
+      {tokens.length === 0 && !loading ? (
+        <EmptyTokens filtered={filtered} onClear={onClear} />
+      ) : (
+        <div key={view} className={`${styles.tableScroller} motion-content`}>
+          <div
+            className={styles.table}
+            role="table"
+            aria-label="Token market overview"
+          >
+            <div className={styles.tableHeader} role="row">
+              {/* ["Token", "MCAP", "24h Vol", "Date Created", "24h", "Paired with"] */}
+              {[
+                "Token",
+                "MCAP",
+                "Creator fee",
+                "Date Created",
+                "Paired with",
+              ].map((label) => (
+                <span key={label} role="columnheader">
+                  {label}
+                </span>
+              ))}
+            </div>
+            {loading && tokens.length === 0 ? (
+              <LoadingRows />
+            ) : (
+              <div className={styles.tableBody} role="rowgroup">
+                {tokens.map((token) => (
+                  <TokenRow key={token.id} token={token} />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+export function HomeDashboard() {
+  const { search, setSearch } = useAppSearch();
+  const launches = useLaunches();
+  const [selectedPair, setSelectedPair] = useState("Creators");
+  const [view, setView] = useState<View>("Trending");
+  const launchesData = launches.data?.launches;
+  const launchTokens = (launchesData ?? []).map((launch) => launch.token);
+  const creatorFees = useCreatorFees(launchTokens);
+  const markets = useTokenMarkets(launchTokens);
+  const listLoading = launches.isPending;
+  const tokens = useMemo(() => {
+    const liveTokens: Token[] = (launchesData ?? []).map((launch) => {
+      const choice = pairChoices.find(
+        (pair) =>
+          pair.address.toLowerCase() === launch.pairToken.toLowerCase(),
+      );
+      const market = markets.values[launch.token.toLowerCase()];
+      const fee = creatorFees.values[launch.token.toLowerCase()];
+      const launchedAt = new Date(launch.launchedAt).getTime();
+      return {
+        id: launch.token,
+        name: `@${launch.handle}`,
+        symbol: launch.launchType === "self" ? "Self-Rove" : "Scout",
+        image: launch.imageUrl || "/figma-home/rovo-token.png",
+        marketCap: markets.loading ? null : (market?.label ?? "—"),
+        marketCapUsd: market?.usd ?? null,
+        // volume24h: "—",
+        ...formatCreated(launch.launchedAt),
+        launchedAt: Number.isNaN(launchedAt) ? 0 : launchedAt,
+        // change24h: "—",
+        creatorFee: creatorFees.loading ? null : (fee?.label ?? "—"),
+        creatorFeeUsd: fee?.usd ?? null,
+        graduated: market?.phase != null && market.phase !== 0,
+        pair: choice
+          ? { label: choice.symbol, icon: choice.iconUrl }
+          : { label: "Pair", icon: "/figma-home/rovo-mark.svg" },
+      };
+    });
+    const matched = liveTokens.filter((token) => {
+      const matchesSearch = `${token.name} ${token.symbol}`
+        .toLowerCase()
+        .includes(search.trim().toLowerCase());
+      const matchesPair =
+        !selectedPair ||
+        selectedPair === "Creators" ||
+        token.pair.label === selectedPair;
+      return matchesSearch && matchesPair;
+    });
+    return arrangeTokens(matched, view);
+  }, [launchesData, creatorFees, markets, search, selectedPair, view]);
+  const launched = launches.data?.launches.length ?? 0;
+  const waitingForPhase = view === "Graduated" && markets.loading;
+  const filtered =
+    tokens.length === 0 &&
+    launched > 0 &&
+    !waitingForPhase &&
+    (search.trim() !== "" ||
+      (selectedPair !== "" && selectedPair !== "Creators") ||
+      view === "Graduated");
+  const clearFilters = () => {
+    setSearch("");
+    setSelectedPair("Creators");
+    setView("Trending");
+  };
+  return (
+    <div className={styles.dashboard}>
+      {launches.isError && (
+        <p role="alert" className="px-4 pt-5 text-sm text-[#ffaaaa]">
+          Could not load launches from the Rovo API. Check that the API and
+          indexer are running.
+        </p>
+      )}
+      <MobileHome
+        tokens={tokens}
+        selectedPair={selectedPair}
+        onPairSelect={setSelectedPair}
+        view={view}
+        onView={setView}
+        filtered={filtered}
+        onClear={clearFilters}
+        loading={listLoading || waitingForPhase}
+      />
+      <main className={`${styles.main} hidden md:flex`}>
+        <div className={styles.assetBar}>
+          <PairFilters selected={selectedPair} onSelect={setSelectedPair} />
+        </div>
+        <TokenTable
+          tokens={tokens}
+          view={view}
+          onView={setView}
+          filtered={filtered}
+          onClear={clearFilters}
+          loading={listLoading || waitingForPhase}
+        />
+      </main>
+    </div>
+  );
+}

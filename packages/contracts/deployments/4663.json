@@ -1,0 +1,12 @@
+{
+  "chainId": 4663,
+  "registry": "0xdc776576ed269dea79ad7d22cea8b2b81f4eb98e",
+  "collectorFactory": "0x596abb83dacf355811a39e397d1a33fc01e70e42",
+  "nottingham": "0x4a9939faf55baf23e2c376f3f373d41fce74c007",
+  "holderRewards": "0xe266d41e8d69c0ac9375e46915e5e9efaa6140a9",
+  "reservoir": "0xc3e2d03ae5c75230552d1834cda0bd9f516f4e65",
+  "splitter": "0x686e1da8b41d249db4ac6bc0f280b224342bb086",
+  "wrapper": "0x68b0fba80e04e13ffcde7a091d8b3d45a079a8b9",
+  "zapRouter": "0x31c77ea5714cfba57d65b8b63c47de63e91cb632",
+  "uniswapStockAdapter": "0x41fa563794215a92859052a9c4f10068389e77b0"
+}

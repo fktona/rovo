@@ -1,0 +1,242 @@
+import { describe, expect, it } from "vitest";
+import { buildServer } from "./app.js";
+import { MemoryRovoRepository } from "./memory.js";
+import type { IdentityVerifier } from "./types.js";
+import type { IdentityAttestationService } from "./attestations.js";
+
+const token = "0x0000000000000000000000000000000000000011" as const;
+const wallet = "0x0000000000000000000000000000000000000022" as const;
+
+function fixture() {
+  const repository = new MemoryRovoRepository();
+  repository.launches.set(token, {
+    token,
+    handle: "alice",
+    xUserId: "42",
+    pairToken: "0x0000000000000000000000000000000000000033",
+    feeCollector: "0x0000000000000000000000000000000000000044",
+    launchType: "self",
+    rover: null,
+    scout: null,
+    claimed: true,
+    creatorTaxBps: 300,
+    displayName: "Alice",
+    imageUrl: null,
+    launchedAt: "2026-09-27T06:54:11.000Z",
+  });
+  repository.profiles.set("alice", {
+    xUserId: "42",
+    handle: "alice",
+    displayName: "Alice",
+    imageUrl: null,
+    token,
+  });
+  repository.rewardClaims.set(
+    `${token.toLowerCase()}:${wallet.toLowerCase()}`,
+    [
+      {
+        profileToken: token,
+        epochId: "7",
+        stockToken: "0x0000000000000000000000000000000000000033",
+        amount: "500",
+        proof: [
+          "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        ],
+        merkleRoot:
+          "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        snapshotBlock: "100",
+        metadataUri: "ipfs://epoch",
+      },
+    ],
+  );
+  const identityVerifier: IdentityVerifier = {
+    async verify(accessToken, selectedWallet) {
+      if (accessToken !== "valid" || selectedWallet !== wallet)
+        throw new Error("invalid");
+      return {
+        privyUserId: "did:privy:test",
+        xUserId: "42",
+        handle: "alice",
+        wallet,
+        verifiedAt: new Date(0),
+      };
+    },
+  };
+  const attestationService = {
+    async issueSelfRove() {
+      return { kind: "self_rove" };
+    },
+    async issueScout() {
+      return { kind: "scout" };
+    },
+    async issueClaim() {
+      return { kind: "claim" };
+    },
+  };
+  return buildServer({
+    repository,
+    identityVerifier,
+    attestationService: attestationService as unknown as Pick<
+      IdentityAttestationService,
+      "issueSelfRove" | "issueScout" | "issueClaim"
+    >,
+  });
+}
+
+describe("Rovo API", () => {
+  it("serves health and launch records", async () => {
+    const app = fixture();
+    expect(
+      (await app.inject({ method: "GET", url: "/health" })).statusCode,
+    ).toBe(200);
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/launches/${token}`,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().creatorTaxBps).toBe(300);
+    const list = await app.inject({
+      method: "GET",
+      url: "/v1/launches?limit=10",
+    });
+    expect(list.statusCode).toBe(200);
+    expect(list.json().launches).toMatchObject([{ token, handle: "alice" }]);
+    const invalid = await app.inject({
+      method: "GET",
+      url: "/v1/launches?limit=101",
+    });
+    expect(invalid.statusCode).toBe(400);
+  });
+
+  it("saves a launch from its receipt without waiting for background sync", async () => {
+    const repository = new MemoryRovoRepository();
+    const saved = {
+      token,
+      handle: "alice",
+      xUserId: "42",
+      pairToken: "0x0000000000000000000000000000000000000033" as const,
+      feeCollector: "0x0000000000000000000000000000000000000044" as const,
+      launchType: "self" as const,
+      rover: null,
+      scout: null,
+      claimed: true,
+      creatorTaxBps: 300,
+      displayName: "Alice",
+      imageUrl: null,
+      launchedAt: "2026-09-27T06:54:11.000Z",
+    };
+    const app = buildServer({
+      repository,
+      identityVerifier: { async verify() { throw new Error("unused"); } },
+      attestationService: { async issueSelfRove() { throw new Error("unused"); }, async issueScout() { throw new Error("unused"); }, async issueClaim() { throw new Error("unused"); } } as unknown as Pick<IdentityAttestationService, "issueSelfRove" | "issueScout" | "issueClaim">,
+      recordLaunch: async (input) => {
+        expect(input.transactionHash).toBe(`0x${"ab".repeat(32)}`);
+        expect(input.handle).toBe("alice");
+        repository.launches.set(input.token.toLowerCase(), saved);
+        return saved;
+      },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/launches/index",
+      payload: {
+        token,
+        transactionHash: `0x${"ab".repeat(32)}`,
+        handle: "alice",
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({ token, handle: "alice", feeCollector: saved.feeCollector });
+    const missing = await app.inject({
+      method: "POST",
+      url: "/v1/launches/index",
+      payload: { token: "not-an-address" },
+    });
+    expect(missing.statusCode).toBe(400);
+  });
+
+  it("allows the configured web origin to call identity routes", async () => {
+    const response = await fixture().inject({
+      method: "OPTIONS",
+      url: "/v1/identity/x/verify",
+      headers: {
+        origin: "http://localhost:3000",
+        "access-control-request-method": "POST",
+      },
+    });
+    expect(response.statusCode).toBe(204);
+    expect(response.headers["access-control-allow-origin"]).toBe(
+      "http://localhost:3000",
+    );
+  });
+
+  it("normalizes profile handles", async () => {
+    const response = await fixture().inject({
+      method: "GET",
+      url: "/v1/profiles/@ALICE",
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().xUserId).toBe("42");
+  });
+
+  it("returns the stored proof and claim arguments for a holder", async () => {
+    const app = fixture();
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/rewards/${token}/${wallet}`,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().claims[0]).toMatchObject({
+      epochId: "7",
+      amount: "500",
+      metadataUri: "ipfs://epoch",
+    });
+  });
+
+  it("requires a valid Privy bearer token", async () => {
+    const app = fixture();
+    expect(
+      (
+        await app.inject({
+          method: "POST",
+          url: "/v1/identity/x/verify",
+          payload: { wallet },
+        })
+      ).statusCode,
+    ).toBe(401);
+    const valid = await app.inject({
+      method: "POST",
+      url: "/v1/identity/x/verify",
+      headers: { authorization: "Bearer valid" },
+      payload: { wallet },
+    });
+    expect(valid.statusCode).toBe(200);
+    expect(valid.json().xUserId).toBe("42");
+  });
+
+  it("exposes Self-Rove, Scout and claim attestation routes", async () => {
+    const app = fixture();
+    const metadataHash = `0x${"11".repeat(32)}`;
+    const self = await app.inject({
+      method: "POST",
+      url: "/v1/attestations/self-rove",
+      headers: { authorization: "Bearer valid" },
+      payload: { wallet, metadataHash },
+    });
+    expect(self.statusCode).toBe(200);
+    expect(self.json().kind).toBe("self_rove");
+    const scout = await app.inject({
+      method: "POST",
+      url: "/v1/attestations/scout",
+      payload: { handle: "alice", metadataHash },
+    });
+    expect(scout.statusCode).toBe(200);
+    const claim = await app.inject({
+      method: "POST",
+      url: "/v1/attestations/claim",
+      headers: { authorization: "Bearer valid" },
+      payload: { wallet, profileToken: token },
+    });
+    expect(claim.statusCode).toBe(200);
+  });
+});

@@ -1,0 +1,20 @@
+{
+  "name": "@rovo/indexer",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file=../../.env node_modules/ponder/dist/esm/bin/ponder.js dev",
+    "start": "ponder start",
+    "codegen": "ponder codegen",
+    "build": "ponder codegen",
+    "typecheck": "ponder codegen && tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "hono": "^4.13.9",
+    "ponder": "^0.17.10",
+    "viem": "^2.37.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0"
+  }
+}

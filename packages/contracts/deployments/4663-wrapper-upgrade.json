@@ -1,0 +1,9 @@
+{
+  "chainId": 4663,
+  "previousWrapper": "0x16bed89fdb8b6e36984f20d03bbd4a5469998007",
+  "wrapper": "0x2b4f3cdc1077739e488300c0852fad057b0186b7",
+  "deployTransaction": "0x717298a42dc97981b688631ec982b3f9af880722aa33f4f2eccc3644c3c1ced7",
+  "deployBlock": 73550986,
+  "ponsRouter": "0xe33E9E479dF8802cb0866d5d05258bEc4cF62948",
+  "canLaunch": true
+}

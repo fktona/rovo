@@ -1,0 +1,16 @@
+{
+  "name": "@rovo/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "build": "node ../../scripts/verify-contracts.mjs --compile-only",
+    "test": "node ../../scripts/verify-contracts.mjs && forge test --match-test 'testAtomic'",
+    "deploy:robinhood": "node deploy/deploy.mjs",
+    "upgrade:wrapper": "node deploy/upgrade-wrapper.mjs"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.4.0",
+    "solc": "0.8.28",
+    "viem": "^2.37.0"
+  }
+}

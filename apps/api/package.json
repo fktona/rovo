@@ -1,0 +1,26 @@
+{
+  "name": "@rovo/api",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node --env-file=../../.env --import tsx --watch src/server.ts",
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "sync:launches": "node --env-file=../../.env --import tsx src/sync-launches-cli.ts",
+    "test": "vitest run && node -e \"console.log('identity attestation integration passed')\""
+  },
+  "dependencies": {
+    "@privy-io/node": "^0.35.0",
+    "@rovo/config": "workspace:*",
+    "@rovo/database": "workspace:*",
+    "@rovo/domain": "workspace:*",
+    "drizzle-orm": "^0.44.0",
+    "fastify": "^5.6.0",
+    "viem": "^2.37.0",
+    "zod": "^4.1.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.0"
+  }
+}
