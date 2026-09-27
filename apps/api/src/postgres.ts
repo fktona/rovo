@@ -79,6 +79,14 @@ export class PostgresRovoRepository
     return view ?? null;
   }
 
+  async deleteLaunch(token: Address): Promise<boolean> {
+    const deleted = await this.db
+      .delete(launches)
+      .where(eq(launches.token, token.toLowerCase()))
+      .returning({ token: launches.token });
+    return deleted.length > 0;
+  }
+
   private async withScouts(views: Omit<LaunchView, "scout">[]): Promise<LaunchView[]> {
     const wallets = [
       ...new Set(

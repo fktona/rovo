@@ -12,6 +12,10 @@ function shortAddress(value: string) {
   return value.length < 12 ? value : `${value.slice(0, 6)}…${value.slice(-4)}`;
 }
 
+function hasEarnings(value: string | null) {
+  return value != null && value !== "—";
+}
+
 function MobileTokenPage({
   token,
   data,
@@ -415,29 +419,31 @@ export function TokenPage({ token }: { token: string }) {
           </div>
         </div>
 
-        <section>
-          <h2 className="mb-3 text-base font-medium tracking-[0.32px] text-[#737373]">
-            Creator Earnings
-          </h2>
-          <div className="grid max-w-md grid-cols-2 rounded-[10px] bg-[#191919] py-4">
-            <div className="px-6">
-              <p className="text-xs font-medium tracking-[0.24px] text-[#737373]">
-                Lifetime
-              </p>
-              <p className="mt-2 text-[23px] font-bold tracking-tight">
-                {data.creatorEarnings ?? "—"}
-              </p>
+        {(hasEarnings(data.creatorEarnings) || hasEarnings(data.holderEarnings)) && (
+          <section>
+            <h2 className="mb-3 text-base font-medium tracking-[0.32px] text-[#737373]">
+              Creator Earnings
+            </h2>
+            <div className="grid max-w-md grid-cols-2 rounded-[10px] bg-[#191919] py-4">
+              <div className="px-6">
+                <p className="text-xs font-medium tracking-[0.24px] text-[#737373]">
+                  Lifetime
+                </p>
+                <p className="mt-2 text-[23px] font-bold tracking-tight">
+                  {data.creatorEarnings ?? "—"}
+                </p>
+              </div>
+              <div className="border-l border-[#383838] px-6">
+                <p className="text-xs font-medium tracking-[0.24px] text-[#737373]">
+                  Holders
+                </p>
+                <p className="mt-2 text-[23px] font-bold tracking-tight">
+                  {data.holderEarnings ?? "—"}
+                </p>
+              </div>
             </div>
-            <div className="border-l border-[#383838] px-6">
-              <p className="text-xs font-medium tracking-[0.24px] text-[#737373]">
-                Holders
-              </p>
-              <p className="mt-2 text-[23px] font-bold tracking-tight">
-                {data.holderEarnings ?? "—"}
-              </p>
-            </div>
-          </div>
-        </section>
+          </section>
+        )}
 
         <section className="rounded-[10px] bg-[#191919] p-4 sm:p-6">
           <div className="flex items-center gap-5">

@@ -1,4 +1,5 @@
 import { createPublicClient, http, parseAbi, zeroAddress, type Address } from "viem";
+import { wrapperAbi } from "@/lib/contracts/abis";
 import { getWebConfig, robinhoodChain } from "@/lib/chain";
 import { getPairChoice } from "@/lib/pairs";
 import { fetchTokenPriceUsd } from "@/lib/asset-price";
@@ -43,6 +44,30 @@ const erc20Abi = parseAbi([
   "function symbol() view returns (string)",
 ]);
 
+async function ponsMarketLaunch(
+  client: ReturnType<typeof createPublicClient>,
+  wrapper: Address,
+  token: Address,
+) {
+  const factory = await client.readContract({
+    address: wrapper,
+    abi: wrapperAbi,
+    functionName: "pons",
+  });
+  const launched = await client.readContract({
+    address: factory,
+    abi: factoryAbi,
+    functionName: "getLaunchedToken",
+    args: [token],
+  });
+  if (!launched.exists || launched.curve === zeroAddress) return null;
+  return {
+    curve: launched.curve,
+    pairToken: launched.pairToken,
+    phase: Number(launched.phase),
+  };
+}
+
 export async function GET(
   _request: Request,
   context: { params: Promise<{ token: string }> },
@@ -58,58 +83,71 @@ export async function GET(
       chain: robinhoodChain,
       transport: http(config.rpcUrl),
     });
-    const launch = await client.readContract({
-      address: config.addresses.registry,
-      abi: registryAbi,
-      functionName: "getLaunch",
-      args: [token as Address],
-    });
-    if (launch.curve === zeroAddress || launch.ponsFactory === zeroAddress) {
-      return Response.json({ available: false });
+    const address = token as Address;
+    let curve: Address;
+    let pairToken: Address;
+    let phase: number;
+    try {
+      const launch = await client.readContract({
+        address: config.addresses.registry,
+        abi: registryAbi,
+        functionName: "getLaunch",
+        args: [address],
+      });
+      if (launch.curve === zeroAddress || launch.ponsFactory === zeroAddress) {
+        return Response.json({ available: false });
+      }
+      const launched = await client.readContract({
+        address: launch.ponsFactory,
+        abi: factoryAbi,
+        functionName: "getLaunchedToken",
+        args: [address],
+      });
+      curve = launch.curve;
+      pairToken = launch.pairToken;
+      phase = Number(launched.phase);
+    } catch {
+      const pons = await ponsMarketLaunch(client, config.addresses.wrapper, address);
+      if (!pons) return Response.json({ available: false });
+      curve = pons.curve;
+      pairToken = pons.pairToken;
+      phase = pons.phase;
     }
-
-    const launched = await client.readContract({
-      address: launch.ponsFactory,
-      abi: factoryAbi,
-      functionName: "getLaunchedToken",
-      args: [token as Address],
-    });
-    const phase = Number(launched.phase);
     // After graduation the curve price is stale. DexScreener indexes the v4 pool.
     if (phase !== 0) {
       return Response.json({ ...(await dexscreenerMarket(token)), phase });
     }
 
-    const native = launch.pairToken === zeroAddress;
+    const native = pairToken === zeroAddress;
     const [reserves, totalSupply, quoteDecimals, tokenDecimals] = await Promise.all([
       client.readContract({
-        address: launch.curve,
+        address: curve,
         abi: curveAbi,
         functionName: "getReserves",
       }),
       client.readContract({
-        address: token as Address,
+        address,
         abi: erc20Abi,
         functionName: "totalSupply",
       }),
       native
         ? Promise.resolve(18)
         : client.readContract({
-            address: launch.pairToken,
+            address: pairToken,
             abi: erc20Abi,
             functionName: "decimals",
           }),
       client.readContract({
-        address: token as Address,
+        address,
         abi: erc20Abi,
         functionName: "decimals",
       }),
     ]);
     const quoteSymbol = native
       ? "ETH"
-      : (getPairChoice(launch.pairToken)?.symbol ??
+      : (getPairChoice(pairToken)?.symbol ??
         (await client.readContract({
-          address: launch.pairToken,
+          address: pairToken,
           abi: erc20Abi,
           functionName: "symbol",
         })));
@@ -119,7 +157,7 @@ export async function GET(
 
     const quoteUsd = native
       ? await fetchEthPriceUsd()
-      : await fetchTokenPriceUsd(launch.pairToken);
+      : await fetchTokenPriceUsd(pairToken);
     if (quoteUsd != null) {
       const marketCapUsd = quoteAmountUsd(marketCap, quoteDecimals, quoteUsd);
       const spot = spotPriceInQuote(reserves[0], reserves[1], tokenDecimals);

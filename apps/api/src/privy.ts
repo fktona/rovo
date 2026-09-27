@@ -47,6 +47,17 @@ export class PrivyIdentityVerifier implements IdentityVerifier {
       verifiedAt: new Date(twitter.verified_at * 1_000),
     };
   }
+
+  async ownsWallet(accessToken: string, wallet: Address): Promise<boolean> {
+    const claims = await this.client.verifyAccessToken(accessToken);
+    const user = await this.client.getUser(claims.user_id);
+    const normalized = wallet.toLowerCase();
+    return user.linked_accounts.some(
+      (account) =>
+        (account.type === "wallet" || account.type === "smart_wallet") &&
+        account.address.toLowerCase() === normalized,
+    );
+  }
 }
 
 export function createPrivyIdentityVerifier(config: {

@@ -155,6 +155,31 @@ describe("Rovo API", () => {
     expect(missing.statusCode).toBe(400);
   });
 
+  it("deletes a saved launch record", async () => {
+    const app = fixture();
+    const removed = await app.inject({
+      method: "DELETE",
+      url: `/v1/launches/${token}`,
+    });
+    expect(removed.statusCode).toBe(200);
+    expect(removed.json()).toEqual({ deleted: true, token });
+    const missing = await app.inject({
+      method: "GET",
+      url: `/v1/launches/${token}`,
+    });
+    expect(missing.statusCode).toBe(404);
+    const again = await app.inject({
+      method: "DELETE",
+      url: `/v1/launches/${token}`,
+    });
+    expect(again.statusCode).toBe(404);
+    const invalid = await app.inject({
+      method: "DELETE",
+      url: "/v1/launches/not-an-address",
+    });
+    expect(invalid.statusCode).toBe(400);
+  });
+
   it("allows the configured web origin to call identity routes", async () => {
     const response = await fixture().inject({
       method: "OPTIONS",
@@ -191,6 +216,49 @@ describe("Rovo API", () => {
       amount: "500",
       metadataUri: "ipfs://epoch",
     });
+  });
+
+  it("lets an authorized admin replace the X token pair", async () => {
+    const saved: Array<{ accessToken: string; refreshToken: string }> = [];
+    const app = buildServer({
+      repository: new MemoryRovoRepository(),
+      identityVerifier: { async verify() { throw new Error("unused"); } },
+      attestationService: {
+        async issueSelfRove() { throw new Error("unused"); },
+        async issueScout() { throw new Error("unused"); },
+        async issueClaim() { throw new Error("unused"); },
+      } as unknown as Pick<IdentityAttestationService, "issueSelfRove" | "issueScout" | "issueClaim">,
+      authorizeAdmin: async (accessToken, selectedWallet) => {
+        if (accessToken !== "valid" || selectedWallet !== wallet) throw new Error("no");
+      },
+      replaceXTokens: async (input) => {
+        saved.push(input);
+        return { expiresAt: "2026-09-28T00:00:00.000Z" };
+      },
+    });
+    const missing = await app.inject({
+      method: "POST",
+      url: "/v1/admin/x-tokens",
+      payload: { wallet, accessToken: "a".repeat(20), refreshToken: "b".repeat(20) },
+    });
+    expect(missing.statusCode).toBe(401);
+    const denied = await app.inject({
+      method: "POST",
+      url: "/v1/admin/x-tokens",
+      headers: { authorization: "Bearer other" },
+      payload: { wallet, accessToken: "a".repeat(20), refreshToken: "b".repeat(20) },
+    });
+    expect(denied.statusCode).toBe(403);
+    const savedResponse = await app.inject({
+      method: "POST",
+      url: "/v1/admin/x-tokens",
+      headers: { authorization: "Bearer valid" },
+      payload: { wallet, accessToken: "access-token-value-ok", refreshToken: "refresh-token-value-ok" },
+    });
+    expect(savedResponse.statusCode).toBe(200);
+    expect(savedResponse.json()).toEqual({ updated: true, expiresAt: "2026-09-28T00:00:00.000Z" });
+    expect(saved).toEqual([{ accessToken: "access-token-value-ok", refreshToken: "refresh-token-value-ok" }]);
+    expect(JSON.stringify(savedResponse.json())).not.toContain("access-token-value-ok");
   });
 
   it("requires a valid Privy bearer token", async () => {

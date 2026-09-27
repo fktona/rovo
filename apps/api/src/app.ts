@@ -26,6 +26,11 @@ export function buildServer(deps: {
     "issueSelfRove" | "issueScout" | "issueClaim"
   >;
   xResolver?: PublicXProfileResolver;
+  authorizeAdmin?: (accessToken: string, wallet: Address) => Promise<void>;
+  replaceXTokens?: (input: {
+    accessToken: string;
+    refreshToken: string;
+  }) => Promise<{ expiresAt: string }>;
   recordLaunch?: (input: {
     token: Address;
     transactionHash: `0x${string}`;
@@ -45,7 +50,7 @@ export function buildServer(deps: {
         "Access-Control-Allow-Headers",
         "Authorization, Content-Type",
       );
-      reply.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+      reply.header("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS");
     }
   });
   app.options("/*", async (_request, reply) => reply.code(204).send());
@@ -87,6 +92,17 @@ export function buildServer(deps: {
       }
       return reply.code(503).send({ error: "launch could not be saved" });
     }
+  });
+
+  app.delete("/v1/launches/:token", async (request, reply) => {
+    const parsed = addressSchema.safeParse(
+      (request.params as { token: string }).token,
+    );
+    if (!parsed.success)
+      return reply.code(400).send({ error: "invalid token address" });
+    const deleted = await deps.repository.deleteLaunch(parsed.data);
+    if (!deleted) return reply.code(404).send({ error: "launch not found" });
+    return { deleted: true, token: parsed.data };
   });
 
   app.get("/v1/launches/:token", async (request, reply) => {
@@ -166,6 +182,41 @@ export function buildServer(deps: {
     return {
       claims: await deps.repository.getRewardClaims(token.data, account.data),
     };
+  });
+
+  app.post("/v1/admin/x-tokens", async (request, reply) => {
+    if (!deps.authorizeAdmin || !deps.replaceXTokens) {
+      return reply.code(503).send({ error: "x token update unavailable" });
+    }
+    const auth = request.headers.authorization;
+    if (!auth?.startsWith("Bearer ")) {
+      return reply.code(401).send({ error: "missing Privy access token" });
+    }
+    const body = z
+      .object({
+        wallet: addressSchema,
+        accessToken: z.string().trim().min(20).max(500),
+        refreshToken: z.string().trim().min(20).max(500),
+      })
+      .safeParse(request.body);
+    if (!body.success) return reply.code(400).send({ error: "invalid x token update" });
+    try {
+      await deps.authorizeAdmin(auth.slice(7), body.data.wallet);
+    } catch {
+      return reply.code(403).send({ error: "admin access required" });
+    }
+    try {
+      return {
+        updated: true,
+        ...(await deps.replaceXTokens({
+          accessToken: body.data.accessToken,
+          refreshToken: body.data.refreshToken,
+        })),
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "x tokens were not saved";
+      return reply.code(400).send({ error: message });
+    }
   });
 
   app.post("/v1/identity/x/verify", async (request, reply) => {

@@ -45,6 +45,7 @@ export type RewardClaimView = {
 export interface RovoRepository {
   listLaunches(limit: number): Promise<LaunchView[]>;
   getLaunch(token: Address): Promise<LaunchView | null>;
+  deleteLaunch(token: Address): Promise<boolean>;
   getProfile(handle: string): Promise<ProfileView | null>;
   getRewardClaims(
     profileToken: Address,

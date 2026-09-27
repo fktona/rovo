@@ -3,6 +3,7 @@ import { eq, sql } from "drizzle-orm";
 import { launchSyncState, launches, profiles, type createDatabase } from "@rovo/database";
 import { robinhoodChain } from "@rovo/config";
 import { normalizeHandle } from "./memory.js";
+import type { PublicXProfileResolver } from "./types.js";
 
 type Database = ReturnType<typeof createDatabase>["db"];
 
@@ -10,6 +11,9 @@ const registryAbi = parseAbi([
   "event LaunchRegistered(address indexed token, uint64 indexed xUserId, bytes32 indexed handleHash, address collector)",
   "event CreatorClaimed(address indexed token, uint64 indexed xUserId, address indexed creator)",
   "function getLaunch(address token) view returns ((address token,address curve,address pairToken,address feeCollector,address ponsFactory,address ponsFeeEscrow,address ponsMemeHook,bytes32 handleHash,bytes32 expectedEconomics,uint64 xUserId,address rover,address creator,uint64 launchedAt,uint16 creatorTaxBps,uint16 creatorToHoldersBps,uint32 launchConfigId,uint8 launchType,bool claimed,bool shareWithHolders) launch)",
+]);
+const ponsFactoryAbi = parseAbi([
+  "function getLaunchedToken(address token) view returns ((address token,address curve,address deployer,address creatorFeeRecipient,address pairToken,uint256 graduationThreshold,uint24 poolFee,int24 tickSpacing,uint16 creatorTaxBps,bool buybackEnabled,uint8 phase,uint256 sweptQuote,uint256 sweptTokens,uint256 sweptAt,bool exists))",
 ]);
 const tokenAbi = parseAbi([
   "function name() view returns (string)",
@@ -73,6 +77,52 @@ export function launchRegistrationFromReceipt(
   };
 }
 
+export function receiptLaunchesPonsToken(
+  receipt: TransactionReceipt,
+  token: Address,
+  factory: Address,
+) {
+  if (receipt.status !== "success") return false;
+  const tokenAddress = token.toLowerCase();
+  const factoryAddress = factory.toLowerCase();
+  const touchesToken = receipt.logs.some((log) => log.address.toLowerCase() === tokenAddress);
+  const touchesFactory = receipt.logs.some((log) => log.address.toLowerCase() === factoryAddress);
+  return touchesToken && touchesFactory;
+}
+
+/** High bit keeps a stand-in id out of the X snowflake range. */
+export function syntheticXUserId(token: Address) {
+  return (BigInt(token) & ((1n << 63n) - 1n)) | (1n << 63n);
+}
+
+function readableHandle(candidate: string | null | undefined) {
+  if (!candidate) return null;
+  try {
+    return normalizeHandle(candidate);
+  } catch {
+    return null;
+  }
+}
+
+function isUniqueViolation(error: unknown) {
+  const seen = new Set<unknown>();
+  let current: unknown = error;
+  while (current && typeof current === "object" && !seen.has(current)) {
+    seen.add(current);
+    if ((current as { code?: string }).code === "23505") return true;
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
+}
+
+export function tokenImageUrl(logo: string) {
+  const value = logo.trim();
+  if (value.startsWith("https://")) return value;
+  if (!value.startsWith("ipfs://")) return null;
+  const path = value.slice("ipfs://".length).replace(/^ipfs\//, "");
+  return path ? `https://gateway.pinata.cloud/ipfs/${path}` : null;
+}
+
 async function readTokenMetadata(client: LaunchSyncClient, token: Address) {
   try {
     const [name, info] = await Promise.all([
@@ -83,7 +133,7 @@ async function readTokenMetadata(client: LaunchSyncClient, token: Address) {
     const logo = info[1].trim();
     return {
       displayName: displayName || null,
-      imageUrl: logo.startsWith("https://") ? logo : null,
+      imageUrl: tokenImageUrl(logo),
     };
   } catch {
     return { displayName: null, imageUrl: null };
@@ -174,6 +224,139 @@ async function persistRegisteredLaunch(input: {
 
 const receiptDelayMs = 750;
 
+async function ponsHandle(
+  client: LaunchSyncClient,
+  token: Address,
+  hint?: string,
+) {
+  const explicit = readableHandle(hint);
+  if (hint && !explicit) throw new LaunchIndexError(409, "invalid X handle");
+  if (explicit) return explicit;
+  try {
+    const symbol = await client.readContract({ address: token, abi: tokenAbi, functionName: "symbol" });
+    const fromSymbol = readableHandle(symbol);
+    if (fromSymbol) return fromSymbol;
+  } catch {
+    // Symbol is only a handle hint.
+  }
+  try {
+    const socials = await client.readContract({ address: token, abi: tokenAbi, functionName: "socials" });
+    const twitter = socials[0].match(/(?:x|twitter)\.com\/([a-zA-Z0-9_]{1,15})/i)?.[1];
+    const fromSocials = readableHandle(twitter);
+    if (fromSocials) return fromSocials;
+  } catch {
+    // Socials are only a handle hint.
+  }
+  throw new LaunchIndexError(409, "X handle is required for this Pons token");
+}
+
+async function xUserIdForHandle(input: {
+  db: Database;
+  token: Address;
+  handle: string;
+  xResolver?: Pick<PublicXProfileResolver, "resolve">;
+}) {
+  const [existing] = await input.db.select().from(profiles).where(eq(profiles.handle, input.handle)).limit(1);
+  if (existing) return existing.xUserId;
+  if (input.xResolver) {
+    try {
+      const profile = await input.xResolver.resolve(input.handle);
+      if (readableHandle(profile.handle) === input.handle && /^\d+$/.test(profile.xUserId)) {
+        return BigInt(profile.xUserId);
+      }
+    } catch {
+      // A Pons token can still be saved when X lookup is unavailable.
+    }
+  }
+  return syntheticXUserId(input.token);
+}
+
+async function persistPonsLaunch(input: {
+  db: Database;
+  client: LaunchSyncClient;
+  receipt: TransactionReceipt;
+  token: Address;
+  pons: { factory: Address; feeEscrow: Address; memeHook: Address };
+  handleHint?: string;
+  xResolver?: Pick<PublicXProfileResolver, "resolve">;
+}) {
+  const { db, client, receipt, token, pons } = input;
+  if (receipt.blockNumber === null || !receiptLaunchesPonsToken(receipt, token, pons.factory)) {
+    throw new LaunchIndexError(409, "transaction does not launch this Pons token");
+  }
+  let launched: Awaited<ReturnType<LaunchSyncClient["readContract"]>> & {
+    exists: boolean;
+    curve: Address;
+    token: Address;
+    deployer: Address;
+    creatorFeeRecipient: Address;
+    pairToken: Address;
+    creatorTaxBps: number;
+  };
+  try {
+    launched = await client.readContract({
+      address: pons.factory,
+      abi: ponsFactoryAbi,
+      functionName: "getLaunchedToken",
+      args: [token],
+    });
+  } catch {
+    throw new LaunchIndexError(409, "token is not on Pons");
+  }
+  if (!launched.exists || launched.curve === zeroAddress || launched.token.toLowerCase() !== token.toLowerCase()) {
+    throw new LaunchIndexError(409, "token is not on Pons");
+  }
+  const handle = await ponsHandle(client, token, input.handleHint);
+  const xUserId = await xUserIdForHandle({ db, token, handle, ...(input.xResolver ? { xResolver: input.xResolver } : {}) });
+  const metadata = await readTokenMetadata(client, token);
+  const block = await client.getBlock({ blockNumber: receipt.blockNumber });
+  const creator = launched.deployer === zeroAddress ? launched.creatorFeeRecipient : launched.deployer;
+  try {
+    await db.transaction(async (tx) => {
+      await tx.insert(profiles).values({
+        xUserId,
+        handle,
+        displayName: metadata.displayName,
+        imageUrl: metadata.imageUrl,
+      }).onConflictDoNothing({ target: profiles.xUserId });
+      const [profile] = await tx.select().from(profiles).where(eq(profiles.xUserId, xUserId)).limit(1);
+      if (!profile || profile.handle !== handle) {
+        throw new LaunchIndexError(409, "this X account already has a profile");
+      }
+      await tx.insert(launches).values({
+        token: token.toLowerCase(),
+        curve: launched.curve.toLowerCase(),
+        pairToken: launched.pairToken.toLowerCase(),
+        // Pons does not create a Rovo collector. The curve is unique per token.
+        feeCollector: launched.curve.toLowerCase(),
+        ponsFactory: pons.factory.toLowerCase(),
+        ponsFeeEscrow: pons.feeEscrow.toLowerCase(),
+        ponsMemeHook: pons.memeHook.toLowerCase(),
+        xUserId,
+        handle,
+        type: "self",
+        rover: null,
+        creator: creator === zeroAddress ? null : creator.toLowerCase(),
+        creatorTaxBps: Number(launched.creatorTaxBps),
+        claimed: true,
+        launchedAt: new Date(Number(block.timestamp) * 1000),
+        blockNumber: receipt.blockNumber,
+        transactionHash: receipt.transactionHash.toLowerCase() as Hex,
+      }).onConflictDoUpdate({
+        target: launches.token,
+        set: {
+          claimed: true,
+          creator: creator === zeroAddress ? null : creator.toLowerCase(),
+        },
+      });
+    });
+  } catch (error) {
+    if (error instanceof LaunchIndexError) throw error;
+    if (isUniqueViolation(error)) throw new LaunchIndexError(409, "this handle already has a launch");
+    throw error;
+  }
+}
+
 export async function indexLaunchImmediately(input: {
   db: Database;
   client: LaunchSyncClient;
@@ -181,6 +364,8 @@ export async function indexLaunchImmediately(input: {
   token: Address;
   transactionHash: Hex;
   handle?: string;
+  pons?: { factory: Address; feeEscrow: Address; memeHook: Address };
+  xResolver?: Pick<PublicXProfileResolver, "resolve">;
 }) {
   if ((await input.client.getChainId()) !== 4663) {
     throw new LaunchIndexError(503, "launch could not be saved");
@@ -196,15 +381,33 @@ export async function indexLaunchImmediately(input: {
     }
   }
   if (!receipt) throw new LaunchIndexError(404, "launch receipt not found");
-  const registered = launchRegistrationFromReceipt(receipt, input.token, input.registry);
-  await persistRegisteredLaunch({
+  let registered: ReturnType<typeof launchRegistrationFromReceipt> | null = null;
+  try {
+    registered = launchRegistrationFromReceipt(receipt, input.token, input.registry);
+  } catch (error) {
+    if (!(error instanceof LaunchIndexError) || error.status !== 409 || !input.pons) throw error;
+  }
+  if (registered) {
+    await persistRegisteredLaunch({
+      db: input.db,
+      client: input.client,
+      registry: input.registry,
+      token: registered.token,
+      transactionHash: registered.transactionHash,
+      blockNumber: registered.blockNumber,
+      ...(input.handle ? { handleHint: input.handle } : {}),
+    });
+    return;
+  }
+  if (!input.pons) throw new LaunchIndexError(409, "transaction does not register this token");
+  await persistPonsLaunch({
     db: input.db,
     client: input.client,
-    registry: input.registry,
-    token: registered.token,
-    transactionHash: registered.transactionHash,
-    blockNumber: registered.blockNumber,
+    receipt,
+    token: input.token,
+    pons: input.pons,
     ...(input.handle ? { handleHint: input.handle } : {}),
+    ...(input.xResolver ? { xResolver: input.xResolver } : {}),
   });
 }
 

@@ -1,5 +1,5 @@
 import { buildServer } from "./app.js";
-import { envSchema } from "@rovo/config";
+import { envSchema, robinhoodChain } from "@rovo/config";
 import { createDatabase } from "@rovo/database";
 import { PostgresRovoRepository } from "./postgres.js";
 import { createPrivyIdentityVerifier } from "./privy.js";
@@ -7,6 +7,7 @@ import { IdentityAttestationService } from "./attestations.js";
 import { XApiProfileResolver } from "./x.js";
 import { selectXTokens, XOAuth } from "./x-auth.js";
 import { loadXOauthTokens, saveXOauthTokens } from "./x-tokens.js";
+import { createPublicClient, http, parseAbi } from "viem";
 import { createLaunchSyncClient, indexLaunchImmediately, runLaunchSync } from "./launch-sync.js";
 
 const env = envSchema.parse(process.env);
@@ -22,16 +23,15 @@ const xTokens = selectXTokens({
   envAccessToken: env.X_API_BEARER_TOKEN,
   envRefreshToken: env.X_API_REFRESH_TOKEN,
 });
-const xResolver = new XApiProfileResolver(
-  new XOAuth({
-    accessToken: xTokens.accessToken,
-    refreshToken: xTokens.refreshToken,
-    expiresAt: xTokens.expiresAt,
-    clientId: env.X_API_CLIENT_ID,
-    clientSecret: env.X_API_CLIENT_SECRET,
-    save: (tokens) => saveXOauthTokens(db, tokens),
-  }),
-);
+const xOauth = new XOAuth({
+  accessToken: xTokens.accessToken,
+  refreshToken: xTokens.refreshToken,
+  expiresAt: xTokens.expiresAt,
+  clientId: env.X_API_CLIENT_ID,
+  clientSecret: env.X_API_CLIENT_SECRET,
+  save: (tokens) => saveXOauthTokens(db, tokens),
+});
+const xResolver = new XApiProfileResolver(xOauth);
 const attestationService = new IdentityAttestationService({
   privateKey: env.IDENTITY_SIGNER_PRIVATE_KEY as `0x${string}`,
   chainId: 4663,
@@ -50,11 +50,43 @@ if (!registry || !/^0x[a-fA-F0-9]{40}$/.test(registry) || !startBlock || !/^\d+$
 }
 const launchClient = createLaunchSyncClient(process.env.PONDER_RPC_URL_4663 ?? env.ROBINHOOD_RPC_URL);
 const registryAddress = registry as `0x${string}`;
+function configuredAddress(name: string) {
+  const value = process.env[name];
+  return value && /^0x[a-fA-F0-9]{40}$/.test(value) ? value as `0x${string}` : null;
+}
+const ponsFactory = configuredAddress("PONS_FACTORY_ADDRESS");
+const ponsFeeEscrow = configuredAddress("PONS_FEE_ESCROW_ADDRESS");
+const ponsMemeHook = configuredAddress("PONS_MEME_HOOK_ADDRESS");
+const pons = ponsFactory && ponsFeeEscrow && ponsMemeHook
+  ? { factory: ponsFactory, feeEscrow: ponsFeeEscrow, memeHook: ponsMemeHook }
+  : null;
+const splitterAddress = process.env.ROVO_SPLITTER_ADDRESS;
+const splitter = splitterAddress && /^0x[a-fA-F0-9]{40}$/.test(splitterAddress)
+  ? splitterAddress as `0x${string}`
+  : null;
+const chain = createPublicClient({
+  chain: robinhoodChain,
+  transport: http(process.env.PONDER_RPC_URL_4663 ?? env.ROBINHOOD_RPC_URL, { retryCount: 1 }),
+});
+const adminRole = `0x${"00".repeat(32)}` as const;
 const app = buildServer({
   repository,
   identityVerifier,
   attestationService,
   xResolver,
+  authorizeAdmin: async (accessToken, wallet) => {
+    if (!splitter) throw new Error("Splitter address is not configured");
+    const ownsWallet = await identityVerifier.ownsWallet(accessToken, wallet);
+    if (!ownsWallet) throw new Error("Wallet is not linked to this login");
+    const allowed = await chain.readContract({
+      address: splitter,
+      abi: parseAbi(["function hasRole(bytes32 role, address account) view returns (bool)"]),
+      functionName: "hasRole",
+      args: [adminRole, wallet],
+    });
+    if (!allowed) throw new Error("Wallet is not a fee admin");
+  },
+  replaceXTokens: (input) => xOauth.replace(input.accessToken, input.refreshToken),
   recordLaunch: async (input) => {
     await indexLaunchImmediately({
       db,
@@ -63,6 +95,8 @@ const app = buildServer({
       token: input.token,
       transactionHash: input.transactionHash,
       ...(input.handle ? { handle: input.handle } : {}),
+      ...(pons ? { pons } : {}),
+      xResolver,
     });
     const saved = await repository.getLaunch(input.token);
     if (!saved) throw new Error("Indexed launch was not saved");

@@ -346,10 +346,7 @@ function AccountMenu({
     xAccount?.profilePictureUrl ?? linked.data?.imageUrl,
   );
 
-  const rows = [
-    { label: "Quick Buy", href: "/" },
-    ...(admin.data ? [{ label: "Admin console", href: "/admin" }] : []),
-  ];
+  const rows = admin.data ? [{ label: "Admin console", href: "/admin" }] : [];
 
   return (
     <div

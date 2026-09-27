@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { formatUnits, isAddress, zeroAddress, type Address, type TransactionReceipt } from "viem";
+import { formatUnits, isAddress, isHash, zeroAddress, type Address, type Hex, type TransactionReceipt } from "viem";
 import { useRovoActions } from "@/hooks/useRovoActions";
 import { useRovoIdentity } from "@/hooks/useRovoIdentity";
 import {
@@ -16,6 +16,7 @@ import {
 } from "@/hooks/useRovoQueries";
 import { useToast } from "@/components/toast/toast-provider";
 import { useRovoContext } from "@/providers/RovoProviders";
+import { RovoApiError } from "@/lib/api";
 import { robinhoodChain } from "@/lib/chain";
 
 type Route = "splitter" | "treasury";
@@ -25,6 +26,16 @@ const muted = "text-[#999]";
 
 function shortAddress(address: string) {
   return `${address.slice(0, 7)}…${address.slice(-5)}`;
+}
+
+function optionalHandle(value: string) {
+  const handle = value.trim().replace(/^@+/, "");
+  return handle.length === 0 || /^[a-zA-Z0-9_]{1,15}$/.test(handle);
+}
+
+function actionErrorMessage(cause: unknown, fallback: string) {
+  if (cause instanceof RovoApiError || cause instanceof Error) return cause.message;
+  return fallback;
 }
 
 function amountLabel(amount: bigint, decimals: number, symbol: string) {
@@ -37,7 +48,7 @@ function amountLabel(amount: bigint, decimals: number, symbol: string) {
 export function AdminDashboard() {
   const identity = useRovoIdentity();
   const toast = useToast();
-  const { reads } = useRovoContext();
+  const { api, reads } = useRovoContext();
   const queryClient = useQueryClient();
   const [walletAddress, setWalletAddress] = useState<Address | undefined>();
   const selectedWallet = walletAddress && identity.wallets.some((wallet) => wallet.address.toLowerCase() === walletAddress.toLowerCase())
@@ -48,6 +59,17 @@ export function AdminDashboard() {
   const launches = useLaunches();
   const treasury = useTreasury();
   const [customAddress, setCustomAddress] = useState("");
+  const [recordToken, setRecordToken] = useState("");
+  const [recordTx, setRecordTx] = useState("");
+  const [recordHandle, setRecordHandle] = useState("");
+  const [recording, setRecording] = useState(false);
+  const [recordError, setRecordError] = useState<string | null>(null);
+  const [xAccessToken, setXAccessToken] = useState("");
+  const [xRefreshToken, setXRefreshToken] = useState("");
+  const [savingXTokens, setSavingXTokens] = useState(false);
+  const [xTokenError, setXTokenError] = useState<string | null>(null);
+  const [pendingDelete, setPendingDelete] = useState<Address | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [selectedToken, setSelectedToken] = useState<Address | undefined>();
   const [pendingRoute, setPendingRoute] = useState<Route | null>(null);
   const [busy, setBusy] = useState(false);
@@ -72,13 +94,83 @@ export function AdminDashboard() {
     && (!selected || selected.feeCollector.toLowerCase() === onchain.data.feeCollector.toLowerCase());
   const claimable = escrow.data ?? 0n;
   const canRoute = !!admin.data && collectorMatches && !!actions && claimable > 0n && !busy && !escrow.isFetching;
+  const canRecord = isAddress(recordToken) && isHash(recordTx) && optionalHandle(recordHandle) && !recording;
+  const canSaveXTokens = xAccessToken.trim().length >= 20 && xRefreshToken.trim().length >= 20 && !savingXTokens;
 
   const walletOptions = useMemo(() => identity.wallets.filter((wallet) => wallet.type === "ethereum"), [identity.wallets]);
+  const pendingLaunch = pendingDelete
+    ? knownLaunches.find((item) => item.token.toLowerCase() === pendingDelete.toLowerCase())
+    : undefined;
 
   function selectToken(token: Address) {
     setSelectedToken(token);
     setPendingRoute(null);
     setSuccess(null);
+  }
+
+  async function recordToDatabase(event: FormEvent) {
+    event.preventDefault();
+    if (!canRecord) return;
+    setRecording(true);
+    setRecordError(null);
+    try {
+      const saved = await api.recordLaunch({
+        token: recordToken as Address,
+        transactionHash: recordTx as Hex,
+        ...(recordHandle.trim() ? { handle: recordHandle } : {}),
+      });
+      setRecordToken("");
+      setRecordTx("");
+      setRecordHandle("");
+      selectToken(saved.token);
+      toast.success(`Recorded @${saved.handle}.`);
+      await queryClient.invalidateQueries({ queryKey: ["rovo"] });
+    } catch (cause) {
+      const message = actionErrorMessage(cause, "The token could not be recorded.");
+      setRecordError(message);
+      toast.error(message);
+    } finally {
+      setRecording(false);
+    }
+  }
+
+  async function saveXTokens(event: FormEvent) {
+    event.preventDefault();
+    if (!canSaveXTokens || !selectedWallet) return;
+    setSavingXTokens(true);
+    setXTokenError(null);
+    try {
+      const token = await identity.getAccessToken();
+      if (!token) throw new Error("Sign in again before updating X tokens.");
+      await api.updateXTokens(token, selectedWallet, xAccessToken.trim(), xRefreshToken.trim());
+      setXAccessToken("");
+      setXRefreshToken("");
+      toast.success("X tokens updated.");
+    } catch (cause) {
+      const message = actionErrorMessage(cause, "X tokens could not be saved.");
+      setXTokenError(message);
+      toast.error(message);
+    } finally {
+      setSavingXTokens(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!pendingDelete || deleting) return;
+    const token = pendingDelete;
+    setPendingDelete(null);
+    setDeleting(true);
+    try {
+      await api.deleteLaunch(token);
+      const next = knownLaunches.find((item) => item.token.toLowerCase() !== token.toLowerCase());
+      setSelectedToken(next?.token);
+      toast.success("Token record removed.");
+      await queryClient.invalidateQueries({ queryKey: ["rovo"] });
+    } catch (cause) {
+      toast.error(actionErrorMessage(cause, "The token record could not be removed."));
+    } finally {
+      setDeleting(false);
+    }
   }
 
   async function confirmRoute() {
@@ -170,6 +262,54 @@ export function AdminDashboard() {
             </div>
           </div>
 
+          <section className={`${panel} mt-6 p-5 sm:p-6`} aria-labelledby="record-heading">
+            <h2 id="record-heading" className="text-lg font-semibold">Record a token</h2>
+            <p className={`mt-1 max-w-3xl text-sm leading-6 ${muted}`}>
+              Save a token that is already on Pons. The API checks the launch transaction, then writes the database row.
+            </p>
+            <form className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1.25fr)_minmax(9rem,0.55fr)_auto] lg:items-end" onSubmit={(event) => void recordToDatabase(event)}>
+              <label className="block min-w-0">
+                <span className="text-xs font-semibold uppercase tracking-[.12em] text-[#999]">Token</span>
+                <input aria-label="Token to record" value={recordToken} onChange={(event) => setRecordToken(event.target.value.trim())} placeholder="0x…" autoComplete="off" spellCheck={false} className="mt-2 w-full rounded-xl border border-[#414141] bg-[#222] px-3 py-3 font-mono text-xs outline-none focus:border-[#ccff00]" />
+              </label>
+              <label className="block min-w-0">
+                <span className="text-xs font-semibold uppercase tracking-[.12em] text-[#999]">Launch transaction</span>
+                <input aria-label="Launch transaction hash" value={recordTx} onChange={(event) => setRecordTx(event.target.value.trim())} placeholder="0x…" autoComplete="off" spellCheck={false} className="mt-2 w-full rounded-xl border border-[#414141] bg-[#222] px-3 py-3 font-mono text-xs outline-none focus:border-[#ccff00]" />
+              </label>
+              <label className="block min-w-0">
+                <span className="text-xs font-semibold uppercase tracking-[.12em] text-[#999]">X handle</span>
+                <input aria-label="X handle" value={recordHandle} onChange={(event) => setRecordHandle(event.target.value.trim())} placeholder="optional" autoComplete="off" spellCheck={false} className="mt-2 w-full rounded-xl border border-[#414141] bg-[#222] px-3 py-3 text-sm outline-none focus:border-[#ccff00]" />
+              </label>
+              <button type="submit" disabled={!canRecord} className="rounded-xl bg-[#ccff00] px-5 py-3 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-40">
+                {recording ? "Recording…" : "Record"}
+              </button>
+            </form>
+            <p className="mt-3 text-xs leading-5 text-[#888]">Add the X handle when the token symbol and socials do not include it. A Rovo registry launch is still accepted.</p>
+            {recordHandle.trim() && !optionalHandle(recordHandle) && <p role="alert" className="mt-3 text-sm text-[#ffaaaa]">Use an X handle of 1–15 letters, numbers, or underscores.</p>}
+            {recordError && <p role="alert" className="mt-3 text-sm text-[#ffaaaa]">{recordError}</p>}
+          </section>
+
+          <section className={`${panel} mt-6 p-5 sm:p-6`} aria-labelledby="x-token-heading">
+            <h2 id="x-token-heading" className="text-lg font-semibold">X API tokens</h2>
+            <p className={`mt-1 max-w-3xl text-sm leading-6 ${muted}`}>
+              Paste a new access token and refresh token from the X developer portal. They replace the pair the API uses for profile lookup, and the fields are cleared after a successful save.
+            </p>
+            <form className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] lg:items-end" onSubmit={(event) => void saveXTokens(event)}>
+              <label className="block min-w-0">
+                <span className="text-xs font-semibold uppercase tracking-[.12em] text-[#999]">Access token</span>
+                <input aria-label="X access token" type="password" value={xAccessToken} onChange={(event) => setXAccessToken(event.target.value)} placeholder="Access token" autoComplete="off" spellCheck={false} className="mt-2 w-full rounded-xl border border-[#414141] bg-[#222] px-3 py-3 font-mono text-xs outline-none focus:border-[#ccff00]" />
+              </label>
+              <label className="block min-w-0">
+                <span className="text-xs font-semibold uppercase tracking-[.12em] text-[#999]">Refresh token</span>
+                <input aria-label="X refresh token" type="password" value={xRefreshToken} onChange={(event) => setXRefreshToken(event.target.value)} placeholder="Refresh token" autoComplete="off" spellCheck={false} className="mt-2 w-full rounded-xl border border-[#414141] bg-[#222] px-3 py-3 font-mono text-xs outline-none focus:border-[#ccff00]" />
+              </label>
+              <button type="submit" disabled={!canSaveXTokens} className="rounded-xl bg-[#ccff00] px-5 py-3 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-40">
+                {savingXTokens ? "Saving…" : "Update tokens"}
+              </button>
+            </form>
+            {xTokenError && <p role="alert" className="mt-3 text-sm text-[#ffaaaa]">{xTokenError}</p>}
+          </section>
+
           <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(280px,0.85fr)_minmax(0,1.15fr)]">
             <section className={`${panel} min-w-0 p-5 sm:p-6`} aria-labelledby="launches-heading">
               <div className="flex items-baseline justify-between gap-3">
@@ -200,7 +340,14 @@ export function AdminDashboard() {
                   <p className="text-xs font-bold uppercase tracking-[.15em] text-[#ccff00]">Fee release</p>
                   <h2 id="routing-heading" className="mt-1 text-xl font-semibold">{selected ? `@${selected.handle}` : activeToken ? shortAddress(activeToken) : "Select a launch"}</h2>
                 </div>
-                {activeToken && <Link href={`/token/${activeToken}`} className="text-sm font-semibold text-[#ccff00]">View token ↗</Link>}
+                <div className="flex items-center gap-4">
+                  {selected && (
+                    <button type="button" disabled={deleting} onClick={() => setPendingDelete(selected.token)} className="text-sm font-semibold text-[#ffaaaa] disabled:opacity-40">
+                      {deleting && pendingDelete === null ? "Removing…" : "Remove record"}
+                    </button>
+                  )}
+                  {activeToken && <Link href={`/token/${activeToken}`} className="text-sm font-semibold text-[#ccff00]">View token ↗</Link>}
+                </div>
               </div>
               {!activeToken ? (
                 <p className={`mt-8 text-sm ${muted}`}>Choose a launch from the list or paste its contract address.</p>
@@ -241,6 +388,21 @@ export function AdminDashboard() {
             </section>
           </div>
         </>
+      )}
+
+      {pendingDelete && (
+        <div className="fixed inset-0 z-[100] flex items-end justify-center bg-black/75 p-3 sm:items-center" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPendingDelete(null); }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="admin-delete-title" className="w-full max-w-md rounded-[24px] border border-[#454545] bg-[#1c1c1c] p-6 shadow-2xl">
+            <p className="text-xs font-bold uppercase tracking-[.17em] text-[#ffaaaa]">Remove database record</p>
+            <h2 id="admin-delete-title" className="mt-2 text-xl font-semibold">Delete this token record?</h2>
+            <p className="mt-4 text-sm leading-6 text-[#aaa]">This removes {pendingLaunch ? `@${pendingLaunch.handle}` : shortAddress(pendingDelete)} from the app database. The token on Robinhood Chain is left unchanged.</p>
+            <p className="mt-3 text-xs leading-5 text-[#888]">You can record the same token again later.</p>
+            <div className="mt-6 flex gap-3">
+              <button type="button" onClick={() => setPendingDelete(null)} className="flex-1 rounded-xl border border-[#555] px-4 py-3 text-sm font-semibold">Cancel</button>
+              <button type="button" disabled={deleting} onClick={() => void confirmDelete()} className="flex-1 rounded-xl bg-[#ff5a5a] px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">Delete record</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {pendingRoute && activeToken && (

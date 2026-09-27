@@ -1,0 +1,35 @@
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - build
+      - -f
+      - deploy/web.Dockerfile
+      - --build-arg
+      - NEXT_PUBLIC_ROVO_API_URL=$_API_URL
+      - --build-arg
+      - NEXT_PUBLIC_PRIVY_APP_ID=$_PRIVY_APP_ID
+      - --build-arg
+      - NEXT_PUBLIC_WALLETCONNECT_PROJECT_ID=$_WALLETCONNECT_PROJECT_ID
+      - --build-arg
+      - NEXT_PUBLIC_ROBINHOOD_RPC_URL=$_RPC_URL
+      - --build-arg
+      - NEXT_PUBLIC_ROVO_REGISTRY_ADDRESS=$_REGISTRY
+      - --build-arg
+      - NEXT_PUBLIC_ROVO_FACTORY_WRAPPER_ADDRESS=$_WRAPPER
+      - --build-arg
+      - NEXT_PUBLIC_ROVO_ZAP_ROUTER_ADDRESS=$_ZAP
+      - --build-arg
+      - NEXT_PUBLIC_ROVO_SPLITTER_ADDRESS=$_SPLITTER
+      - --build-arg
+      - NEXT_PUBLIC_ROVO_NOTTINGHAM_ADDRESS=$_NOTTINGHAM
+      - --build-arg
+      - NEXT_PUBLIC_ROVO_HOLDER_REWARDS_ADDRESS=$_HOLDER_REWARDS
+      - -t
+      - us-central1-docker.pkg.dev/$PROJECT_ID/rovo/web:latest
+      - .
+images:
+  - us-central1-docker.pkg.dev/$PROJECT_ID/rovo/web:latest
+options:
+  logging: CLOUD_LOGGING_ONLY
+substitutions:
+  _WALLETCONNECT_PROJECT_ID: ""

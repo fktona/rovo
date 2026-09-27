@@ -122,9 +122,23 @@ export class XOAuth implements XTokenSource {
       now?: () => number;
     },
   ) {
-    this.accessToken = options.accessToken.trim();
-    this.refreshToken = options.refreshToken?.trim() ? options.refreshToken.trim() : null;
+    this.accessToken = unwrapXToken(options.accessToken);
+    this.refreshToken = options.refreshToken?.trim() ? unwrapXToken(options.refreshToken) : null;
     this.expiresAt = options.expiresAt ?? xTokenExpiresAt(this.accessToken) ?? 0;
+  }
+
+  async replace(accessToken: string, refreshToken: string) {
+    const access = unwrapXToken(accessToken);
+    const refresh = unwrapXToken(refreshToken);
+    if (access.length < 20 || refresh.length < 20) {
+      throw new Error("Access token and refresh token are both required.");
+    }
+    const expiresAt = xTokenExpiresAt(access) ?? (this.options.now ?? Date.now)() + 2 * 60 * 60 * 1000;
+    this.accessToken = access;
+    this.refreshToken = refresh;
+    this.expiresAt = expiresAt;
+    await this.options.save?.({ accessToken: access, refreshToken: refresh, expiresAt });
+    return { expiresAt: new Date(expiresAt).toISOString() };
   }
 
   async getAccessToken() {

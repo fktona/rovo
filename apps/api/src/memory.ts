@@ -19,6 +19,10 @@ export class MemoryRovoRepository implements RovoRepository {
     return this.launches.get(token.toLowerCase()) ?? null;
   }
 
+  async deleteLaunch(token: Address) {
+    return this.launches.delete(token.toLowerCase());
+  }
+
   async getProfile(handle: string) {
     return this.profiles.get(normalizeHandle(handle)) ?? null;
   }

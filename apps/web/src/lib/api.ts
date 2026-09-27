@@ -92,16 +92,18 @@ export class RovoApiClient {
   private async request<T>(
     path: string,
     options: {
+      method?: "GET" | "POST" | "DELETE";
       body?: unknown;
       token?: string;
       signal?: AbortSignal | undefined;
     } = {},
   ): Promise<T> {
+    const method = options.method ?? (options.body === undefined ? "GET" : "POST");
     const response = await this.fetcher.call(
       globalThis,
       `${this.baseUrl.replace(/\/+$/, "")}${path}`,
       {
-        method: options.body === undefined ? "GET" : "POST",
+        method,
         headers: {
           ...(options.body === undefined
             ? {}
@@ -139,16 +141,23 @@ export class RovoApiClient {
       signal,
     });
   }
+  deleteLaunch(token: Address) {
+    return this.request<{ deleted: true; token: Address }>(
+      `/v1/launches/${asAddress(token)}`,
+      { method: "DELETE" },
+    );
+  }
   recordLaunch(input: {
     token: Address;
     transactionHash: Hex;
-    handle: string;
+    handle?: string;
   }) {
+    const handle = input.handle?.trim();
     return this.request<LaunchView>("/v1/launches/index", {
       body: {
         token: asAddress(input.token),
         transactionHash: asBytes32(input.transactionHash, "transaction"),
-        handle: normalizeHandle(input.handle),
+        ...(handle ? { handle: normalizeHandle(handle) } : {}),
       },
     });
   }
@@ -182,6 +191,16 @@ export class RovoApiClient {
       `/v1/rewards/${asAddress(token)}/${asAddress(account)}`,
       { signal },
     );
+  }
+  updateXTokens(token: string, wallet: Address, accessToken: string, refreshToken: string) {
+    return this.request<{ updated: true; expiresAt: string }>("/v1/admin/x-tokens", {
+      token,
+      body: {
+        wallet: asAddress(wallet),
+        accessToken,
+        refreshToken,
+      },
+    });
   }
   verifyX(token: string, wallet: Address) {
     return this.request<VerifiedXIdentity>("/v1/identity/x/verify", {

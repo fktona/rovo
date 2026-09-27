@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { encodeAbiParameters, encodeEventTopics, keccak256, toBytes, type Address, type TransactionReceipt } from "viem";
-import { launchRegistrationFromReceipt, matchingHandle } from "./launch-sync.js";
+import { launchRegistrationFromReceipt, matchingHandle, receiptLaunchesPonsToken, syntheticXUserId, tokenImageUrl } from "./launch-sync.js";
 
 describe("launch handle recovery", () => {
   const handleHash = keccak256(toBytes("bluupdotfun"));
@@ -84,5 +84,52 @@ describe("immediate launch receipt", () => {
         registry,
       ),
     ).toThrow("transaction does not register this token");
+  });
+});
+
+describe("Pons launch receipt", () => {
+  const factory = "0x0000000000000000000000000000000000000011" as const;
+  const token = "0x0000000000000000000000000000000000000022" as const;
+  const other = "0x0000000000000000000000000000000000000033" as const;
+
+  function receipt(addresses: Address[], status: "success" | "reverted" = "success"): TransactionReceipt {
+    return {
+      status,
+      transactionHash: `0x${"ab".repeat(32)}`,
+      blockNumber: 42n,
+      logs: addresses.map((address, logIndex) => ({
+        address,
+        data: "0x",
+        topics: [],
+        blockNumber: 42n,
+        transactionHash: `0x${"ab".repeat(32)}`,
+        logIndex,
+        transactionIndex: 0,
+        blockHash: `0x${"11".repeat(32)}`,
+        removed: false,
+      })),
+    } as unknown as TransactionReceipt;
+  }
+
+  it("accepts a successful receipt that touches the Pons factory and the token", () => {
+    expect(receiptLaunchesPonsToken(receipt([factory, token]), token, factory)).toBe(true);
+  });
+
+  it("rejects a receipt that did not launch this token", () => {
+    expect(receiptLaunchesPonsToken(receipt([factory, other]), token, factory)).toBe(false);
+    expect(receiptLaunchesPonsToken(receipt([token]), token, factory)).toBe(false);
+    expect(receiptLaunchesPonsToken(receipt([factory, token], "reverted"), token, factory)).toBe(false);
+  });
+
+  it("keeps https logos and serves ipfs logos through a gateway", () => {
+    expect(tokenImageUrl("https://cdn.example/logo.png")).toBe("https://cdn.example/logo.png");
+    expect(tokenImageUrl("ipfs://bafybeidexample")).toBe("https://gateway.pinata.cloud/ipfs/bafybeidexample");
+    expect(tokenImageUrl("")).toBeNull();
+  });
+
+  it("keeps a synthetic X user id outside the snowflake range", () => {
+    const id = syntheticXUserId(token);
+    expect(id).toBeGreaterThanOrEqual(1n << 63n);
+    expect(id).toBeLessThan(1n << 64n);
   });
 });
