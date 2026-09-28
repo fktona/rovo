@@ -7,6 +7,16 @@ steps:
       - -t
       - us-central1-docker.pkg.dev/$PROJECT_ID/rovo/api:latest
       - .
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - update
+      - rovo-api
+      - --project=$PROJECT_ID
+      - --region=us-central1
+      - --image=us-central1-docker.pkg.dev/$PROJECT_ID/rovo/api:latest
 images:
   - us-central1-docker.pkg.dev/$PROJECT_ID/rovo/api:latest
 options:

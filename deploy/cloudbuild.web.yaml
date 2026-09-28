@@ -27,9 +27,28 @@ steps:
       - -t
       - us-central1-docker.pkg.dev/$PROJECT_ID/rovo/web:latest
       - .
+  - name: gcr.io/google.com/cloudsdktool/cloud-sdk
+    entrypoint: gcloud
+    args:
+      - run
+      - services
+      - update
+      - rovo-web
+      - --project=$PROJECT_ID
+      - --region=us-central1
+      - --image=us-central1-docker.pkg.dev/$PROJECT_ID/rovo/web:latest
 images:
   - us-central1-docker.pkg.dev/$PROJECT_ID/rovo/web:latest
 options:
   logging: CLOUD_LOGGING_ONLY
 substitutions:
+  _API_URL: https://rovo-api-675690952863.us-central1.run.app
+  _PRIVY_APP_ID: cmuix6wbb00gd0cl9h290bx2s
   _WALLETCONNECT_PROJECT_ID: ""
+  _RPC_URL: https://robinhood.drpc.org
+  _REGISTRY: "0x9e6D6f8FCa32E721c24D7f668a6EA1dC896C8916"
+  _WRAPPER: "0x5E952c8E7EB763d7d1CF318cba8ECF8259eF02da"
+  _ZAP: "0x98ab554F40069521161B659E02Ffbe48CC4D1a79"
+  _SPLITTER: "0xeF991a125b91dA6794d0D62137cF0A2e724ACc54"
+  _NOTTINGHAM: "0x882f00222908C63a58B215aad202c6baBdF5d575"
+  _HOLDER_REWARDS: "0x2A07cb48E7A1bBC6f7dbE1f7Ba06ADbE233a2911"
