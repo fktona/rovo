@@ -9,7 +9,7 @@ import { useFeeAdmin } from "@/hooks/useRovoQueries";
 import type { Address } from "viem";
 import { onboardingSeen } from "@/lib/onboarding";
 import { useToast } from "@/components/toast/toast-provider";
-import { AssetIcon, icons } from "../home/assets";
+import { AssetIcon, icons, RovoWordmark } from "../home/assets";
 import { styles } from "../home/styles";
 import { DocsIcon, HomeIcon, LaunchIcon, ProfileIcon, RewardsIcon } from "./icon";
 
@@ -131,7 +131,7 @@ function Sidebar({
       )}
       <aside
         aria-label="Main navigation"
-        className={`flex h-full flex-col bg-black py-4 ${
+        className={`flex h-full flex-col bg-black pb-4 ${
           overlayOpen
             ? "fixed inset-y-0 left-0 z-40 w-60 px-3 shadow-2xl"
             : "w-full px-2"
@@ -140,14 +140,14 @@ function Sidebar({
         <Link
           href="/"
           aria-label="Rovo home"
-          className="group relative mb-6 flex items-center justify-center"
+          className={`group relative flex h-16 shrink-0 items-center lg:h-20 ${itemAlign}`}
         >
           <span
             className={
               overlayOpen ? "hidden" : pinnedOpen ? "lg:hidden" : "inline-flex"
             }
           >
-            <AssetIcon src={icons.logoMark} alt="" width={34} height={34} />
+            <AssetIcon src={icons.logoMark} alt="" width={34} height={34} className="block size-[34px]" />
           </span>
           <span
             className={
@@ -158,7 +158,7 @@ function Sidebar({
                   : "hidden"
             }
           >
-            <AssetIcon src={icons.logo} alt="" width={112} height={34} />
+            <RovoWordmark className="h-[34px] w-auto" />
           </span>
           <span aria-hidden="true" className={tooltipClass}>
             Rovo
@@ -600,9 +600,9 @@ function Header({
         <Link
           href="/"
           aria-label="Rovo home"
-          className="shrink-0 md:hidden [&_img]:h-[22px] [&_img]:w-auto"
+          className="flex h-11 shrink-0 items-center md:hidden"
         >
-          <AssetIcon src={icons.logo} alt="Rovo" width={112} height={34} />
+          <RovoWordmark className="h-[22px] w-auto" />
         </Link>
         <div className="flex items-center justify-end gap-1 justify-self-end md:order-3">
           <RovoAddress />

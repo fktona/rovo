@@ -154,6 +154,12 @@ a:active {
   outline-offset: 3px;
 }
 
+html[data-theme="light"] .rovo-wordmark-dark {
+  display: none;
+}
+html[data-theme="light"] .rovo-wordmark-light {
+  display: block;
+}
 html[data-theme="light"] body {
   background: #f4f4f1;
   color: #141414;

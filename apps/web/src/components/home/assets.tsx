@@ -2,6 +2,7 @@ export const asset = (name: string) => `/figma-home/${name}`;
 
 export const icons = {
   logo: asset("rovo-logo.svg"),
+  logoLight: asset("rovo-logo-light.svg"),
   logoMark: asset("rovo-mark.svg"),
   home: asset("home.svg"),
   launch: asset("launch.svg"),
@@ -25,20 +26,49 @@ export function AssetIcon({
   alt = "",
   width,
   height,
+  className,
 }: {
   src: string;
   alt?: string;
   width: number;
   height: number;
+  className?: string;
 }) {
-  // Figma SVGs are served as separate files at their intrinsic dimensions.
   // eslint-disable-next-line @next/next/no-img-element
   return (
     <img
       src={src}
       alt={alt}
-      width={src.endsWith(".svg") ? undefined : width}
-      height={src.endsWith(".svg") ? undefined : height}
+      width={width}
+      height={height}
+      className={className ?? "block"}
     />
+  );
+}
+
+export function RovoWordmark({
+  alt = "Rovo",
+  className = "h-[34px] w-auto",
+}: {
+  alt?: string;
+  className?: string;
+}) {
+  return (
+    <span className="inline-flex items-center">
+      <AssetIcon
+        src={icons.logo}
+        alt=""
+        width={112}
+        height={34}
+        className={`rovo-wordmark-dark block ${className}`}
+      />
+      <AssetIcon
+        src={icons.logoLight}
+        alt=""
+        width={112}
+        height={34}
+        className={`rovo-wordmark-light hidden ${className}`}
+      />
+    </span>
   );
 }
