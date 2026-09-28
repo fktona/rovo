@@ -57,7 +57,7 @@ Current production substitutions (also the yaml defaults):
 
 | Substitution | Value |
 | --- | --- |
-| `_API_URL` | `https://rovo-api-675690952863.us-central1.run.app` |
+| `_API_URL` | `https://api.rovo.fun` |
 | `_PRIVY_APP_ID` | `cmuix6wbb00gd0cl9h290bx2s` |
 | `_WALLETCONNECT_PROJECT_ID` | empty |
 | `_RPC_URL` | `https://robinhood.drpc.org` |
@@ -129,7 +129,7 @@ Current API env keys (values for secrets stay on the service, not in git):
 - `ROVO_SPLITTER_ADDRESS` — `0xeF991a125b91dA6794d0D62137cF0A2e724ACc54`
 - `ROVO_NOTTINGHAM_ADDRESS` — `0x882f00222908C63a58B215aad202c6baBdF5d575`
 - `ROVO_START_BLOCK` — `74534805`
-- `ROVO_WEB_ORIGIN` — `https://rovo-web-675690952863.us-central1.run.app`
+- `ROVO_WEB_ORIGIN` — `https://rovo.fun,https://www.rovo.fun`
 - `NODE_ENV` — `production`
 - `PONS_FACTORY_ADDRESS` — `0x7eD598BcEf8bd9Edd8C97A195C6d13f40801EC7e`
 - `PONS_FEE_ESCROW_ADDRESS` — `0xd3AFEB2a57f70eF218Aa82451C51B2fb0416Ac9e`

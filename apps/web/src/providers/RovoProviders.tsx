@@ -77,7 +77,7 @@ export function RovoProviders({
         defaultChain: walletChain as unknown as NonNullable<
           PrivyClientConfig["defaultChain"]
         >,
-        loginMethods: ["wallet", "twitter", "email"],
+        loginMethods: ["wallet", "twitter", "email" , "google"],
       }}
     >
       {app}

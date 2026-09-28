@@ -42,7 +42,7 @@ images:
 options:
   logging: CLOUD_LOGGING_ONLY
 substitutions:
-  _API_URL: https://rovo-api-675690952863.us-central1.run.app
+  _API_URL: https://api.rovo.fun
   _PRIVY_APP_ID: cmuix6wbb00gd0cl9h290bx2s
   _WALLETCONNECT_PROJECT_ID: ""
   _RPC_URL: https://robinhood.drpc.org

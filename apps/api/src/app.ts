@@ -41,10 +41,14 @@ export function buildServer(deps: {
 
   app.addHook("onRequest", async (request, reply) => {
     const origin = request.headers.origin;
-    const allowedOrigin =
-      process.env.ROVO_WEB_ORIGIN ?? "http://localhost:3000";
-    if (origin === allowedOrigin) {
-      reply.header("Access-Control-Allow-Origin", allowedOrigin);
+    const allowedOrigins = (
+      process.env.ROVO_WEB_ORIGIN ?? "http://localhost:3000"
+    )
+      .split(",")
+      .map((value) => value.trim())
+      .filter((value) => value.length > 0);
+    if (typeof origin === "string" && allowedOrigins.includes(origin)) {
+      reply.header("Access-Control-Allow-Origin", origin);
       reply.header("Vary", "Origin");
       reply.header(
         "Access-Control-Allow-Headers",

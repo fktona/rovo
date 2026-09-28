@@ -49,7 +49,7 @@ export default function OnboardingPage() {
 
   return (
     <main className="mx-auto flex min-h-full w-full max-w-5xl items-start px-4 py-6 text-white sm:px-6 md:items-center md:justify-center md:py-10">
-      <section className="w-full max-w-2xl md:overflow-hidden md:rounded-[24px] md:border md:border-[#343434] md:bg-[#191919]">
+      <section className="w-full max-w-2xl overflow-hidden rounded-[24px] border border-[#343434] bg-[#191919]">
         <div className="md:border-b md:border-[#343434] md:px-9 md:py-5">
           <div className="flex items-center gap-3">
             <AssetIcon src={icons.logoMark} alt="" width={36} height={36} />

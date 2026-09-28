@@ -624,7 +624,7 @@ export function LaunchLive() {
 
   return (
     <main className={`mx-auto w-full px-4 py-6 text-white sm:px-6 sm:py-10 ${mode === "meme" ? "max-w-6xl" : "max-w-4xl"}`}>
-      <section className="md:rounded-[20px] md:bg-[#191919] md:p-10">
+      <section className="rounded-[20px] bg-[#191919] p-4 md:p-10">
         <div className="inline-flex h-auto max-w-full items-center gap-1 overflow-x-auto rounded-[5px] bg-[#212121] p-1">
           {(
             [

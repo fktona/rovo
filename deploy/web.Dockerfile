@@ -30,7 +30,9 @@ ENV NEXT_PUBLIC_ROVO_NOTTINGHAM_ADDRESS=$NEXT_PUBLIC_ROVO_NOTTINGHAM_ADDRESS
 ENV NEXT_PUBLIC_ROVO_HOLDER_REWARDS_ADDRESS=$NEXT_PUBLIC_ROVO_HOLDER_REWARDS_ADDRESS
 
 RUN pnpm install --frozen-lockfile --filter @rovo/web...
-RUN pnpm --filter @rovo/web build
+RUN node -e 'const url=process.env.NEXT_PUBLIC_ROVO_API_URL; if(!url) throw new Error("NEXT_PUBLIC_ROVO_API_URL is empty"); console.log("API_URL="+url)' \
+ && pnpm --filter @rovo/web build \
+ && node -e 'const {execSync}=require("child_process"); const url=process.env.NEXT_PUBLIC_ROVO_API_URL; const hits=execSync("grep -R -l -- "+JSON.stringify(url)+" apps/web/.next/static || true",{encoding:"utf8"}); if(!hits.trim()){console.error("bundle missing "+url); process.exit(1)} console.log("bundle contains "+url)'
 
 FROM node:22-bookworm-slim
 

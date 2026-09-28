@@ -195,6 +195,45 @@ describe("Rovo API", () => {
     );
   });
 
+  it("allows each configured web origin", async () => {
+    const previous = process.env.ROVO_WEB_ORIGIN;
+    process.env.ROVO_WEB_ORIGIN = "https://rovo.fun,https://www.rovo.fun";
+    try {
+      const app = fixture();
+      const apex = await app.inject({
+        method: "OPTIONS",
+        url: "/v1/identity/x/verify",
+        headers: {
+          origin: "https://rovo.fun",
+          "access-control-request-method": "POST",
+        },
+      });
+      expect(apex.headers["access-control-allow-origin"]).toBe(
+        "https://rovo.fun",
+      );
+      const www = await app.inject({
+        method: "OPTIONS",
+        url: "/v1/identity/x/verify",
+        headers: {
+          origin: "https://www.rovo.fun",
+          "access-control-request-method": "POST",
+        },
+      });
+      expect(www.headers["access-control-allow-origin"]).toBe(
+        "https://www.rovo.fun",
+      );
+      const other = await app.inject({
+        method: "GET",
+        url: "/health",
+        headers: { origin: "https://example.com" },
+      });
+      expect(other.headers["access-control-allow-origin"]).toBeUndefined();
+    } finally {
+      if (previous === undefined) delete process.env.ROVO_WEB_ORIGIN;
+      else process.env.ROVO_WEB_ORIGIN = previous;
+    }
+  });
+
   it("normalizes profile handles", async () => {
     const response = await fixture().inject({
       method: "GET",

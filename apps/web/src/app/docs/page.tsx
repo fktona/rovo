@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { isAddress } from "viem";
-import { AssetIcon, icons } from "@/components/home/assets";
+import { RovoWordmark } from "@/components/home/assets";
 import { robinhoodChain } from "@/lib/chain";
 
 export const metadata: Metadata = {
@@ -61,7 +61,7 @@ export default function DocsPage() {
   return <main className="min-h-full bg-[#101110] text-white">
     <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-white/10 bg-[#111311]/95 px-5 backdrop-blur sm:px-9">
       <a href="/docs" className="flex items-center gap-3 text-lg font-bold tracking-tight">
-        <AssetIcon src={icons.logo} alt="Rovo" width={112} height={34} />
+        <RovoWordmark />
         Docs
       </a>
       <Link href="/" className="rounded-lg border border-white/15 px-3 py-2 text-sm font-medium text-[#d4d8d0] hover:border-[#ccff00] hover:text-white">Back to app ↗</Link>

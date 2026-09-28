@@ -173,7 +173,7 @@ function Sidebar({
                   href={item.href}
                   aria-current={active ? "page" : undefined}
                   onClick={onNavigate}
-                  className={`group relative flex items-center gap-2.5 rounded-[15px] py-2.5 text-sm font-medium tracking-[.02em] hover:bg-[#111] lg:py-3 lg:text-base ${itemAlign} ${
+                  className={`group relative flex items-center gap-2.5 rounded-[15px] py-2.5 text-sm font-medium tracking-[.02em] hover:bg-[#191919] lg:py-3 lg:text-base ${itemAlign} ${
                     active ? styles.navLinkActive : ""
                   }`}
                 >
@@ -194,7 +194,7 @@ function Sidebar({
               href="/admin"
               aria-current={isActive(pathname, "/admin") ? "page" : undefined}
               onClick={onNavigate}
-              className={`group relative flex items-center gap-2.5 rounded-[15px] py-2.5 text-sm font-medium tracking-[.02em] hover:bg-[#111] lg:py-3 lg:text-base ${itemAlign} ${isActive(pathname, "/admin") ? styles.navLinkActive : ""}`}
+              className={`group relative flex items-center gap-2.5 rounded-[15px] py-2.5 text-sm font-medium tracking-[.02em] hover:bg-[#191919] lg:py-3 lg:text-base ${itemAlign} ${isActive(pathname, "/admin") ? styles.navLinkActive : ""}`}
             >
               <span className="flex size-6 shrink-0 items-center justify-center text-xl" aria-hidden="true">⚙</span>
               <span className={labelClass}>Admin</span>
@@ -205,7 +205,7 @@ function Sidebar({
             href="/docs"
             aria-current={isActive(pathname, "/docs") ? "page" : undefined}
             onClick={onNavigate}
-            className={`group relative flex items-center gap-2.5 rounded-[15px] py-2.5 text-sm font-medium tracking-[.02em] hover:bg-[#111] lg:py-3 lg:text-base ${itemAlign} ${isActive(pathname, "/docs") ? styles.navLinkActive : ""}`}
+            className={`group relative flex items-center gap-2.5 rounded-[15px] py-2.5 text-sm font-medium tracking-[.02em] hover:bg-[#191919] lg:py-3 lg:text-base ${itemAlign} ${isActive(pathname, "/docs") ? styles.navLinkActive : ""}`}
           >
             <span
               className={`flex size-6 shrink-0 items-center justify-center ${isActive(pathname, "/docs") ? "text-[#ccff00]" : "text-white"}`}
@@ -222,7 +222,7 @@ function Sidebar({
             onClick={onToggle}
             aria-expanded={expanded}
             aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
-            className="mt-auto flex items-center justify-center rounded-[15px] py-3 text-white/70 hover:bg-[#111] hover:text-white"
+            className="mt-auto flex items-center justify-center rounded-[15px] py-3 text-white/70 hover:bg-[#191919] hover:text-white"
           >
             <span className={overlayOpen ? "hidden" : "lg:hidden"}>
               <Chevron />
