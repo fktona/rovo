@@ -1,12 +1,12 @@
 {
   "chainId": 4663,
-  "registry": "0xdc776576ed269dea79ad7d22cea8b2b81f4eb98e",
-  "collectorFactory": "0x596abb83dacf355811a39e397d1a33fc01e70e42",
-  "nottingham": "0x4a9939faf55baf23e2c376f3f373d41fce74c007",
-  "holderRewards": "0xe266d41e8d69c0ac9375e46915e5e9efaa6140a9",
-  "reservoir": "0xc3e2d03ae5c75230552d1834cda0bd9f516f4e65",
-  "splitter": "0x686e1da8b41d249db4ac6bc0f280b224342bb086",
-  "wrapper": "0x68b0fba80e04e13ffcde7a091d8b3d45a079a8b9",
-  "zapRouter": "0x31c77ea5714cfba57d65b8b63c47de63e91cb632",
-  "uniswapStockAdapter": "0x41fa563794215a92859052a9c4f10068389e77b0"
+  "registry": "0x9e6d6f8fca32e721c24d7f668a6ea1dc896c8916",
+  "collectorFactory": "0x957488ea3b720b184c0c1645312500149614fdf9",
+  "nottingham": "0x882f00222908c63a58b215aad202c6babdf5d575",
+  "holderRewards": "0x2a07cb48e7a1bbc6f7dbe1f7ba06adbe233a2911",
+  "reservoir": "0x5df847a5925a0ae862f0c57e6ffb5bc877af50d5",
+  "splitter": "0xef991a125b91da6794d0d62137cf0a2e724acc54",
+  "wrapper": "0x5e952c8e7eb763d7d1cf318cba8ecf8259ef02da",
+  "zapRouter": "0x98ab554f40069521161b659e02ffbe48cc4d1a79",
+  "uniswapStockAdapter": "0x638baf85d23cd1914c66f97ce38a1fbab8328de9"
 }
