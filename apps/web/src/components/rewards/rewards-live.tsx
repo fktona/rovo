@@ -97,6 +97,11 @@ export function RewardsLive() {
       <p className="mt-1 text-sm text-[#8a8a8a]">
         Creator fees from every profile and scout token.
       </p>
+      <p className="mt-3 max-w-xl text-sm leading-6 text-[#8a8a8a]">
+        During the contract audit, fees Rovo collects go to the X Money wallet
+        for manual allocation. Amounts here are estimates. They are not an
+        automatic on-chain payout.
+      </p>
 
       <p className="mt-8 text-xs font-medium uppercase tracking-[0.08em] text-[#8a8a8a]">
         Total rewards

@@ -5,7 +5,7 @@ import { isAddress, parseAbi, zeroAddress, type Address } from "viem";
 import { useOnchainLaunch, useLaunch, usePonsPhase } from "@/hooks/useRovoQueries";
 import { useRovoContext } from "@/providers/RovoProviders";
 import { feeShareBps, splitFees } from "@/lib/fee-split";
-import { getPairChoice } from "@/lib/pairs";
+import { getPairChoice, pairIconSrc } from "@/lib/pairs";
 import { formatPriceUsd, formatUsd } from "@/lib/token-market";
 import type { ScoutProfile } from "@/lib/api";
 import type { ChartPoint } from "./token-chart";
@@ -213,7 +213,7 @@ export function useTokenPageData(token: string, range: ChartRange) {
     image: launch.data?.imageUrl || "/figma-token/zora.png",
     scout: scoutProfile(launch.data),
     pairLabel: pair?.symbol ?? (pairToken === zeroAddress ? "ETH" : quoteSymbol || "—"),
-    pairIcon: pair?.iconUrl,
+    pairIcon: pair ? pairIconSrc(pair.iconUrl) : undefined,
     status: phase.data == null ? null : phase.data === 0 ? "Bonding" : "Graduated",
     priceLabel: priceUsd == null ? "—" : formatPriceUsd(priceUsd),
     marketCapLabel: marketCapUsd == null ? "—" : formatUsd(marketCapUsd),

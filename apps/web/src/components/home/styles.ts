@@ -1,11 +1,10 @@
-// Previous market columns: Token, MCAP, 24h Vol, Date Created, 24h, Paired with.
 const columns =
-  "md:grid-cols-[minmax(11rem,1.8fr)_minmax(6.5rem,0.9fr)_minmax(7rem,1fr)_minmax(5.5rem,0.9fr)_minmax(6.5rem,1fr)]";
+  "md:grid-cols-[minmax(10rem,1.5fr)_minmax(5.5rem,0.75fr)_minmax(5.5rem,0.75fr)_minmax(7.5rem,0.85fr)_minmax(6rem,0.9fr)]";
 
 export const styles = {
   srOnly: "sr-only",
   dashboard: "flex min-h-full flex-col bg-black text-base",
-  navLinkActive: "bg-[#191919] text-[#ccff00] hover:bg-[#191919]",
+  navLinkActive: "bg-[#191919] hover:bg-[#191919]",
   header:
     "relative grid min-w-0 grid-cols-[auto_minmax(0,1fr)] items-center gap-x-3 gap-y-3 px-4 py-3 md:flex md:flex-nowrap md:gap-3 lg:gap-4 lg:px-8 lg:py-5",
   searchBox:
@@ -46,9 +45,7 @@ export const styles = {
   metric: "flex min-w-0 flex-col items-start gap-1 md:justify-center",
   metricLabel: "text-[11px] font-medium text-[#737373] md:hidden",
   marketCap: "font-semibold text-[#ccff00]",
-  metricValue: "font-semibold",
-  dateCell: "md:flex-col md:items-center md:gap-1",
-  dateAge: "text-[11px] text-[#737373] sm:text-sm",
+  metricValue: "font-semibold whitespace-nowrap",
   change: "font-semibold text-[#34c759]",
   pairCell:
     "flex min-w-0 items-center gap-1 [&_img]:block [&_img]:shrink-0 [&_img]:rounded-full [&_img]:object-cover [&_span]:truncate",

@@ -127,9 +127,11 @@ describe("Pons launch receipt", () => {
     expect(tokenImageUrl("")).toBeNull();
   });
 
-  it("keeps a synthetic X user id outside the snowflake range", () => {
+  it("keeps a synthetic X user id inside a signed bigint and outside the snowflake range", () => {
     const id = syntheticXUserId(token);
-    expect(id).toBeGreaterThanOrEqual(1n << 63n);
-    expect(id).toBeLessThan(1n << 64n);
+    const signedMax = (1n << 63n) - 1n;
+    expect(id).toBeLessThan(0n);
+    expect(id).toBeGreaterThanOrEqual(-(signedMax));
+    expect(syntheticXUserId("0x0000000000000000000000000000000000000000")).toBe(-1n);
   });
 });

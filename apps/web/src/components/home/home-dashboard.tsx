@@ -6,8 +6,8 @@ import { formatUnits } from "viem";
 import { AssetIcon, icons } from "./assets";
 import type { Pair, Token } from "./data";
 import { useLaunches } from "@/hooks/useRovoQueries";
-import { pairChoices } from "@/lib/pairs";
-import { formatUsd } from "@/lib/token-market";
+import { pairChoices, pairIconSrc } from "@/lib/pairs";
+import { formatPriceUsd, formatUsd } from "@/lib/token-market";
 import { styles } from "./styles";
 import { useAppSearch } from "../shell/app-shell";
 
@@ -15,25 +15,38 @@ const views = [
   { label: "Trending", icon: icons.trending, width: 22, height: 12 },
   { label: "New", icon: icons.new, width: 19, height: 19 },
   { label: "Graduated", icon: icons.graduated, width: 19, height: 19 },
-  { label: "Highest Vault", icon: icons.vault, width: 19, height: 19 },
 ] as const;
 
 type View = (typeof views)[number]["label"];
 
 const creatorsPair: Pair = { label: "Creators", icon: icons.creators };
+const memesPair: Pair = { label: "Memes", icon: icons.launch };
 const featuredPairs: Pair[] = pairChoices.slice(0, 10).map((choice) => ({
   label: choice.symbol,
   icon: choice.iconUrl,
 }));
 
 function PairIcon({ pair }: { pair: Pair }) {
-  // eslint-disable-next-line @next/next/no-img-element
+  const [failed, setFailed] = useState(false);
+  const src = pairIconSrc(pair.icon);
+  if (failed) {
+    return (
+      <span
+        aria-hidden
+        className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-[#383838] text-[10px] font-semibold text-white"
+      >
+        {pair.label.slice(0, 1)}
+      </span>
+    );
+  }
   return (
+    // eslint-disable-next-line @next/next/no-img-element
     <img
-      src={pair.icon}
+      src={src}
       alt=""
       width={22}
       height={22}
+      onError={() => setFailed(true)}
       className={`${pair.label === "Creators" ? "size-7" : "size-[22px]"} shrink-0 object-contain`}
     />
   );
@@ -53,6 +66,7 @@ function PairFilters({
   const extra =
     selected &&
     selected !== "Creators" &&
+    selected !== "Memes" &&
     !featuredPairs.some((pair) => pair.label === selected)
       ? {
           label: selected,
@@ -62,8 +76,8 @@ function PairFilters({
         }
       : null;
   const chips = extra
-    ? [creatorsPair, ...featuredPairs, extra]
-    : [creatorsPair, ...featuredPairs];
+    ? [creatorsPair, memesPair, ...featuredPairs, extra]
+    : [creatorsPair, memesPair, ...featuredPairs];
   const matches = pairChoices.filter((choice) => {
     const needle = query.trim().toLowerCase();
     if (!needle) return true;
@@ -225,14 +239,8 @@ function formatCreated(value: string | undefined) {
     : hours < 24 ? `${hours} ${hours === 1 ? "hr" : "hrs"} ago`
     : days < 30 ? `${days} ${days === 1 ? "day" : "days"} ago`
     : `${months} ${months === 1 ? "mo" : "mos"} ago`;
-  return { created, age: "" };
+  return { created, age: created };
 }
-
-type CreatorFeeResponse = {
-  earnedForToken: string;
-  quoteAsset: { symbol: string; decimals: number };
-  usdValue?: number;
-};
 
 function formatQuote(amount: string, decimals: number, symbol: string) {
   if (
@@ -249,21 +257,13 @@ function formatQuote(amount: string, decimals: number, symbol: string) {
   return `${trimmed ? `${whole}.${trimmed}` : whole} ${symbol}`;
 }
 
-function formatCreatorFee(fee: CreatorFeeResponse) {
-  if (typeof fee.usdValue === "number") return formatUsd(fee.usdValue);
-  return formatQuote(
-    fee.earnedForToken,
-    fee.quoteAsset.decimals,
-    fee.quoteAsset.symbol,
-  );
-}
-
 type MarketResponse = {
   available?: boolean;
   marketCap?: string;
   quoteDecimals?: number;
   quoteSymbol?: string;
   marketCapUsd?: number;
+  priceUsd?: number | null;
   phase?: number;
 };
 
@@ -271,15 +271,15 @@ type MarketSnapshot = {
   label: string;
   usd: number | null;
   phase: number | null;
+  price: string;
 };
 
-type FeeSnapshot = {
-  label: string;
-  usd: number | null;
+const emptyMarket: MarketSnapshot = {
+  label: "—",
+  usd: null,
+  phase: null,
+  price: "—",
 };
-
-const emptyMarket: MarketSnapshot = { label: "—", usd: null, phase: null };
-const emptyFee: FeeSnapshot = { label: "—", usd: null };
 
 function formatMarket(market: MarketResponse) {
   if (!market.available) return "—";
@@ -324,20 +324,8 @@ function useLoadedValues<T>(
   return { values, loading: key !== "" && key !== settledKey };
 }
 
-function useCreatorFees(tokens: string[]) {
-  const load = useMemo(
-    () => async (token: string): Promise<FeeSnapshot> => {
-      const response = await fetch(`/api/creator-fees/${token}`);
-      if (!response.ok) return emptyFee;
-      const fee = (await response.json()) as CreatorFeeResponse;
-      return {
-        label: formatCreatorFee(fee),
-        usd: typeof fee.usdValue === "number" ? fee.usdValue : null,
-      };
-    },
-    [],
-  );
-  return useLoadedValues(tokens, load, emptyFee);
+function priceLabel(value: number | null | undefined) {
+  return typeof value === "number" && Number.isFinite(value) ? formatPriceUsd(value) : "—";
 }
 
 function useTokenMarkets(tokens: string[]) {
@@ -350,6 +338,7 @@ function useTokenMarkets(tokens: string[]) {
         label: formatMarket(market),
         usd: typeof market.marketCapUsd === "number" ? market.marketCapUsd : null,
         phase: typeof market.phase === "number" ? market.phase : null,
+        price: priceLabel(market.priceUsd),
       };
     },
     [],
@@ -371,10 +360,6 @@ function arrangeTokens(tokens: Token[], view: View) {
     return ranked
       .filter((token) => token.graduated)
       .sort((a, b) => rankValue(b.marketCapUsd) - rankValue(a.marketCapUsd));
-  }
-  if (view === "Highest Vault") {
-    ranked.sort((a, b) => rankValue(b.creatorFeeUsd) - rankValue(a.creatorFeeUsd));
-    return ranked;
   }
   ranked.sort((a, b) => rankValue(b.marketCapUsd) - rankValue(a.marketCapUsd));
   return ranked;
@@ -437,19 +422,13 @@ function TokenRow({ token }: { token: Token }) {
         <span className={styles.metricLabel}>MCAP</span>
         <MetricValue value={token.marketCap} className={styles.marketCap} />
       </div>
-      {/*
       <div className={styles.metric} role="cell">
-        <span className={styles.metricLabel}>24h Vol</span>
-        <strong className={styles.metricValue}>{token.volume24h}</strong>
+        <span className={styles.metricLabel}>Price</span>
+        <MetricValue value={token.price} className={styles.metricValue} />
       </div>
-      */}
       <div className={styles.metric} role="cell">
-        <span className={styles.metricLabel}>Creator fee</span>
-        <MetricValue value={token.creatorFee} className={styles.marketCap} />
-      </div>
-      <div className={`${styles.metric} ${styles.dateCell}`} role="cell">
-        <span className={styles.metricLabel}>Date Created</span>
-        <strong className={styles.metricValue}>{token.created}</strong>
+        <span className={styles.metricLabel}>Age</span>
+        <strong className={styles.metricValue}>{token.age}</strong>
       </div>
       {/*
       <div className={styles.metric} role="cell">
@@ -595,13 +574,8 @@ function MobileHome({
               <span className="mt-1 block text-sm font-medium text-[#888]">
                 MCAP
               </span>
-              <MetricValue
-                value={token.creatorFee}
-                className="mt-1 block text-sm leading-tight"
-              />
-              <span className="block text-xs font-medium text-[#888]">
-                Creator fee
-              </span>
+              <MetricValue value={token.price} className="mt-1 block text-sm leading-tight" />
+              <span className="block text-xs font-medium text-[#888]">Price</span>
             </div>
           </Link>
         ))}
@@ -641,14 +615,7 @@ function TokenTable({
             aria-label="Token market overview"
           >
             <div className={styles.tableHeader} role="row">
-              {/* ["Token", "MCAP", "24h Vol", "Date Created", "24h", "Paired with"] */}
-              {[
-                "Token",
-                "MCAP",
-                "Creator fee",
-                "Date Created",
-                "Paired with",
-              ].map((label) => (
+              {["Token", "MCAP", "Price", "Age", "Paired with"].map((label) => (
                 <span key={label} role="columnheader">
                   {label}
                 </span>
@@ -677,35 +644,38 @@ export function HomeDashboard() {
   const [view, setView] = useState<View>("Trending");
   const launchesData = launches.data?.launches;
   const launchTokens = (launchesData ?? []).map((launch) => launch.token);
-  const creatorFees = useCreatorFees(launchTokens);
   const markets = useTokenMarkets(launchTokens);
   const listLoading = launches.isPending;
   const tokens = useMemo(() => {
-    const liveTokens: Token[] = (launchesData ?? []).map((launch) => {
+    const liveTokens = (launchesData ?? []).map((launch) => {
       const choice = pairChoices.find(
         (pair) =>
           pair.address.toLowerCase() === launch.pairToken.toLowerCase(),
       );
       const market = markets.values[launch.token.toLowerCase()];
-      const fee = creatorFees.values[launch.token.toLowerCase()];
       const launchedAt = new Date(launch.launchedAt).getTime();
+      const meme = launch.launchType === "meme";
       return {
         id: launch.token,
-        name: `@${launch.handle}`,
-        symbol: launch.launchType === "self" ? "Self-Rove" : "Scout",
+        name: meme
+          ? launch.displayName || launch.handle
+          : `@${launch.handle}`,
+        symbol: meme
+          ? launch.handle.toUpperCase()
+          : launch.launchType === "self"
+            ? "Self-Rove"
+            : "Scout",
         image: launch.imageUrl || "/figma-home/rovo-token.png",
         marketCap: markets.loading ? null : (market?.label ?? "—"),
         marketCapUsd: market?.usd ?? null,
-        // volume24h: "—",
+        price: markets.loading ? null : (market?.price ?? "—"),
         ...formatCreated(launch.launchedAt),
         launchedAt: Number.isNaN(launchedAt) ? 0 : launchedAt,
-        // change24h: "—",
-        creatorFee: creatorFees.loading ? null : (fee?.label ?? "—"),
-        creatorFeeUsd: fee?.usd ?? null,
         graduated: market?.phase != null && market.phase !== 0,
         pair: choice
           ? { label: choice.symbol, icon: choice.iconUrl }
           : { label: "Pair", icon: "/figma-home/rovo-mark.svg" },
+        meme,
       };
     });
     const matched = liveTokens.filter((token) => {
@@ -713,13 +683,15 @@ export function HomeDashboard() {
         .toLowerCase()
         .includes(search.trim().toLowerCase());
       const matchesPair =
-        !selectedPair ||
-        selectedPair === "Creators" ||
-        token.pair.label === selectedPair;
+        selectedPair === "Memes"
+          ? token.meme
+          : !selectedPair ||
+            selectedPair === "Creators" ||
+            token.pair.label === selectedPair;
       return matchesSearch && matchesPair;
     });
     return arrangeTokens(matched, view);
-  }, [launchesData, creatorFees, markets, search, selectedPair, view]);
+  }, [launchesData, markets, search, selectedPair, view]);
   const launched = launches.data?.launches.length ?? 0;
   const waitingForPhase = view === "Graduated" && markets.loading;
   const filtered =

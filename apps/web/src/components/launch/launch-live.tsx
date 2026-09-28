@@ -7,19 +7,23 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   decodeEventLog,
   formatUnits,
+  isAddress,
   parseUnits,
   toHex,
   zeroAddress,
   type Address,
   type Hex,
+  type PublicClient,
   type TransactionReceipt,
 } from "viem";
-import { wrapperAbi } from "@/lib/contracts/abis";
-import { pairChoices, type PairChoice } from "@/lib/pairs";
+import { ponsFactoryAbi, wrapperAbi } from "@/lib/contracts/abis";
+import { pairChoices, pairIconSrc, type PairChoice } from "@/lib/pairs";
+import { MemeLaunchForm } from "./meme-launch-form";
 import { normalizeHandle } from "@/lib/validation";
 import { useRovoIdentity } from "@/hooks/useRovoIdentity";
 import { useRovoActions } from "@/hooks/useRovoActions";
 import {
+  rovoKeys,
   useLaunchFee,
   useTokenForHandle,
   useXAccount,
@@ -33,7 +37,7 @@ import { formatQuoteAmount, quoteEthForToken } from "@/lib/contracts/uniswap";
 import { formatPriceUsd, formatUsd } from "@/lib/token-market";
 import type { TokenMetadata } from "@/lib/contracts/types";
 
-type Mode = "self" | "scout";
+type Mode = "self" | "scout" | "meme";
 type PairKind = "all" | "xstocks" | "crypto";
 
 const LAUNCH_CONFIG_ID = 0;
@@ -159,7 +163,53 @@ type LaunchedToken = {
   symbol: string;
   mint: Address | null;
   txHash: Hex;
+  kind: Mode;
+  pair: string;
+  creatorTax: number;
 };
+
+async function memeMintFromReceipt(
+  client: PublicClient,
+  factory: Address,
+  receipt: TransactionReceipt,
+) {
+  const candidates = new Set<Address>();
+  for (const log of receipt.logs) {
+    for (const topic of log.topics.slice(1)) {
+      if (!topic || topic.length !== 66) continue;
+      const address = `0x${topic.slice(26)}`;
+      if (isAddress(address) && address !== zeroAddress) candidates.add(address);
+    }
+  }
+  for (const token of candidates) {
+    try {
+      const launched = await client.readContract({
+        address: factory,
+        abi: ponsFactoryAbi,
+        functionName: "getLaunchedToken",
+        args: [token],
+      });
+      if (launched.exists) return token;
+    } catch {
+      continue;
+    }
+  }
+  return null;
+}
+
+async function uploadLaunchImage(file: File) {
+  const body = new FormData();
+  body.append("file", file);
+  const response = await fetch("/api/pinata", { method: "POST", body });
+  const payload = (await response.json().catch(() => null)) as {
+    url?: string;
+    error?: string;
+  } | null;
+  if (!response.ok || !payload?.url) {
+    throw new Error(payload?.error ?? "Image upload failed.");
+  }
+  return payload.url;
+}
 
 function tokenFromReceipt(receipt: TransactionReceipt): Address | null {
   for (const log of receipt.logs) {
@@ -197,14 +247,24 @@ export function LaunchLive() {
   const [openingAsset, setOpeningAsset] = useState<"pair" | "eth">("eth");
   const [busy, setBusy] = useState(false);
   const [busyLabel, setBusyLabel] = useState("Confirming…");
+  const [checkingExisting, setCheckingExisting] = useState(false);
   const [error, setError] = useState("");
   const [launched, setLaunched] = useState<LaunchedToken | null>(null);
+  const [memeName, setMemeName] = useState("");
+  const [memeSymbol, setMemeSymbol] = useState("");
+  const [memeFile, setMemeFile] = useState<File | null>(null);
+  const [memePreview, setMemePreview] = useState<string | null>(null);
+  const [memeTax, setMemeTax] = useState(0);
+  const [memeDescription, setMemeDescription] = useState("");
+  const [memeWebsite, setMemeWebsite] = useState("");
+  const [memeTelegram, setMemeTelegram] = useState("");
+  const [memeTwitter, setMemeTwitter] = useState("");
   const fee = useLaunchFee();
   const ownHandle = identity.xAccount?.username ?? "";
   const scoutText = queryText(scoutQuery);
   const scoutSelected =
     scoutProfile != null && scoutText.toLowerCase() === scoutProfile.handle;
-  const targetHandle = mode === "self" ? ownHandle : (scoutProfile?.handle ?? "");
+  const targetHandle = mode === "self" ? ownHandle : mode === "scout" ? (scoutProfile?.handle ?? "") : "";
   const handle = safeHandle(targetHandle);
   const xProfile = useXAccount(handle);
   const xSearch = useXSearch(
@@ -212,14 +272,18 @@ export function LaunchLive() {
   );
   const existing = useTokenForHandle(handle);
   const displayName =
-    xProfile.data?.displayName?.trim() ||
-    (mode === "self"
-      ? identity.xAccount?.name?.trim()
-      : scoutProfile?.displayName?.trim()) ||
-    handle ||
-    "";
-  const symbol = handle ?? "";
-  const avatar = xAvatarUrl(
+    mode === "meme"
+      ? memeName.trim()
+      : xProfile.data?.displayName?.trim() ||
+        (mode === "self"
+          ? identity.xAccount?.name?.trim()
+          : scoutProfile?.displayName?.trim()) ||
+        handle ||
+        "";
+  const symbol = mode === "meme" ? memeSymbol.trim() : (handle ?? "");
+  const avatar = mode === "meme"
+    ? memePreview
+    : xAvatarUrl(
     xProfile.data?.imageUrl ||
       (mode === "self"
         ? identity.xAccount?.profilePictureUrl
@@ -273,6 +337,7 @@ export function LaunchLive() {
     setMode(next);
     setStep(1);
     setError("");
+    setCheckingExisting(false);
     setScoutQuery("");
     setScoutProfile(null);
   };
@@ -291,7 +356,7 @@ export function LaunchLive() {
       await identity.connectOrCreateWallet();
       return;
     }
-    if (!identity.xAccount) {
+    if (mode === "self" && !identity.xAccount) {
       router.push("/onboarding");
       return;
     }
@@ -299,24 +364,35 @@ export function LaunchLive() {
       setError("Select an X account from the list.");
       return;
     }
-    if (existing.isLoading) {
-      setError("Checking whether this profile already has a token.");
+    if (!handle) {
+      setError(
+        mode === "scout"
+          ? "Select an X account from the list."
+          : "Link your X account.",
+      );
       return;
     }
-    if (existing.isError) {
+    setCheckingExisting(true);
+    try {
+      const token = await queryClient.fetchQuery({
+        queryKey: rovoKeys.chain("token-for-handle", handle.toLowerCase()),
+        queryFn: () => reads.tokenForHandle(handle),
+      });
+      if (token && token !== zeroAddress) {
+        setError("This X profile already has a Rovo token.");
+        return;
+      }
+      setStep(2);
+    } catch {
       setError("Could not check this profile on-chain. Try again.");
-      return;
+    } finally {
+      setCheckingExisting(false);
     }
-    if (existing.data && existing.data !== zeroAddress) {
-      setError("This X profile already has a Rovo token.");
-      return;
-    }
-    setStep(2);
   };
   const submit = async () => {
     setError("");
-    if (!identity.xAccount) {
-      setError("Link your X account before launching a token.");
+    if (mode === "self" && !identity.xAccount) {
+      setError("Link your X account before launching your profile token.");
       return;
     }
     if (mode === "scout" && !scoutProfile) {
@@ -324,24 +400,30 @@ export function LaunchLive() {
       return;
     }
     if (!actions || !pairToken || !symbol || !displayName) return;
-    const metadata: TokenMetadata = {
-      name: displayName,
-      symbol,
-      logo: avatar ?? "",
-      description: "",
-      socials: {
-        twitter: `https://x.com/${symbol}`,
-        telegram: "",
-        discord: "",
-        website: "",
-        farcaster: "",
-      },
-      salt: toHex(crypto.getRandomValues(new Uint8Array(32))),
-    };
     setBusy(true);
     setBusyLabel("Confirming…");
     let swappedInto: { amount: bigint; decimals: number; symbol: string } | null = null;
     try {
+      let logo = mode === "meme" ? "" : (avatar ?? "");
+      if (mode === "meme" && memeFile) {
+        setBusyLabel("Uploading image…");
+        logo = await uploadLaunchImage(memeFile);
+        setBusyLabel("Confirming…");
+      }
+      const metadata: TokenMetadata = {
+        name: displayName,
+        symbol,
+        logo,
+        description: mode === "meme" ? memeDescription.trim() : "",
+        socials: {
+          twitter: mode === "meme" ? memeTwitter.trim() : `https://x.com/${symbol}`,
+          telegram: mode === "meme" ? memeTelegram.trim() : "",
+          discord: "",
+          website: mode === "meme" ? memeWebsite.trim() : "",
+          farcaster: "",
+        },
+        salt: toHex(crypto.getRandomValues(new Uint8Array(32))),
+      };
       if (openingAmount.trim() && !hasOpeningBuy)
         throw new Error("Enter a positive opening buy amount or leave it blank to skip.");
       let openingBuy: { quoteIn: bigint; minTokensOut: bigint } | undefined;
@@ -407,7 +489,11 @@ export function LaunchLive() {
         if (quoteIn > 0n) {
           const curve = await reads.launchCurve(LAUNCH_CONFIG_ID, pairToken);
           const creatorTaxBps =
-            mode === "self" ? BigInt(CREATOR_TAX_BPS) : BigInt(await reads.scoutCreatorTaxBps());
+            mode === "scout"
+              ? BigInt(await reads.scoutCreatorTaxBps())
+              : mode === "meme"
+                ? BigInt(Math.round(memeTax * 100))
+                : BigInt(CREATOR_TAX_BPS);
           const minTokensOut = minTokensAtSlippage(
             quoteOpeningBuy({
               quoteIn,
@@ -422,40 +508,56 @@ export function LaunchLive() {
             throw new Error("This opening buy is too small to receive profile tokens.");
           }
           if (pairToken !== zeroAddress && wallet) {
-            const allowance = await reads.allowance(
-              pairToken,
-              wallet,
-              config.addresses.wrapper,
-            );
+            const spender =
+              mode === "meme"
+                ? await reads.atomicLaunchRouter()
+                : config.addresses.wrapper;
+            const allowance = await reads.allowance(pairToken, wallet, spender);
             if (allowance < quoteIn) {
-              await actions.approveToken(
-                pairToken,
-                config.addresses.wrapper,
-                quoteIn,
-              );
+              await actions.approveToken(pairToken, spender, quoteIn);
             }
           }
           openingBuy = { quoteIn, minTokensOut };
         }
       }
       const receipt =
-        mode === "self"
-          ? await actions.launchSelfRove({
+        mode === "meme"
+          ? await actions.launchMeme({
               metadata,
               launchConfigId: LAUNCH_CONFIG_ID,
               pairToken,
-              creatorTaxBps: CREATOR_TAX_BPS,
+              creatorTaxBps: Math.round(memeTax * 100),
               ...(openingBuy ? { openingBuy } : {}),
             })
-          : await actions.launchScout({
-              metadata,
-              launchConfigId: LAUNCH_CONFIG_ID,
-              pairToken,
-              handle: symbol,
-              ...(openingBuy ? { openingBuy } : {}),
-            });
-      const fromReceipt = tokenFromReceipt(receipt);
-      const fromRegistry = fromReceipt ?? (await reads.tokenForHandle(symbol));
+          : mode === "self"
+            ? await actions.launchSelfRove({
+                metadata,
+                launchConfigId: LAUNCH_CONFIG_ID,
+                pairToken,
+                creatorTaxBps: CREATOR_TAX_BPS,
+                ...(openingBuy ? { openingBuy } : {}),
+              })
+            : await actions.launchScout({
+                metadata,
+                launchConfigId: LAUNCH_CONFIG_ID,
+                pairToken,
+                handle: symbol,
+                ...(openingBuy ? { openingBuy } : {}),
+              });
+      const factory =
+        mode === "meme"
+          ? await publicClient.readContract({
+              address: config.addresses.wrapper,
+              abi: wrapperAbi,
+              functionName: "pons",
+            })
+          : null;
+      const fromReceipt =
+        mode === "meme" && factory
+          ? await memeMintFromReceipt(publicClient, factory, receipt)
+          : tokenFromReceipt(receipt);
+      const fromRegistry =
+        fromReceipt ?? (mode === "meme" ? null : await reads.tokenForHandle(symbol));
       const mint =
         fromRegistry && fromRegistry !== zeroAddress ? fromRegistry : null;
       if (mint) {
@@ -480,6 +582,9 @@ export function LaunchLive() {
         symbol,
         mint,
         txHash: receipt.transactionHash,
+        kind: mode,
+        pair: selectedPair?.symbol ?? "ETH",
+        creatorTax: memeTax,
       });
     } catch (cause) {
       if (swappedInto) {
@@ -498,45 +603,68 @@ export function LaunchLive() {
 
   const launchedToken =
     existing.data && existing.data !== zeroAddress ? existing.data : null;
+  const waitingOnExisting =
+    Boolean(handle) &&
+    (checkingExisting || (existing.isPending && !existing.isError));
+  const identityReady =
+    identity.authenticated &&
+    Boolean(wallet) &&
+    (mode !== "self" || Boolean(identity.xAccount)) &&
+    (mode !== "scout" || Boolean(scoutProfile));
 
   const identityLabel = !identity.authenticated
     ? "Log in to continue"
     : !wallet
       ? "Connect wallet"
-      : !identity.xAccount
+      : mode === "self" && !identity.xAccount
         ? "Link X account"
-        : "Continue";
+        : waitingOnExisting
+          ? "Checking…"
+          : "Continue";
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-4 py-6 text-white sm:px-6 sm:py-10">
+    <main className={`mx-auto w-full px-4 py-6 text-white sm:px-6 sm:py-10 ${mode === "meme" ? "max-w-6xl" : "max-w-4xl"}`}>
       <section className="md:rounded-[20px] md:bg-[#191919] md:p-10">
-        <div className="inline-flex h-[43px] items-center rounded-[5px] bg-[#212121] p-1">
-          {(["self", "scout"] as const).map((value) => (
+        <div className="inline-flex h-auto max-w-full items-center gap-1 overflow-x-auto rounded-[5px] bg-[#212121] p-1">
+          {(
+            [
+              ["self", "Your X profile"],
+              ["scout", "Another creator"],
+              ["meme", "Meme token"],
+            ] as const
+          ).map(([value, label]) => (
             <button
               key={value}
               type="button"
               onClick={() => switchMode(value)}
               aria-pressed={mode === value}
-              className={`flex h-[33px] w-[118px] items-center justify-center rounded-[5px] text-base ${
+              className={`flex h-[33px] shrink-0 items-center justify-center rounded-[5px] px-3 text-sm ${
                 mode === value
                   ? "border border-[#e1ff1f] bg-[#ccff00] font-medium text-black"
                   : "bg-[#383838] text-[#7f7f7f]"
               }`}
             >
-              {value === "self" ? "Self-Rove" : "Scout"}
+              {label}
             </button>
           ))}
         </div>
 
         <h1 className="mt-8 text-[32px] font-bold leading-[1.05] tracking-[-1.2px] sm:text-[40px] sm:leading-[41px]">
-          Put a person
-          <br />
-          on the market.
+          {mode === "self"
+            ? "Tokenize your X profile"
+            : mode === "scout"
+              ? "Tokenize another creator"
+              : "Launch a meme token"}
         </h1>
         <p className="mt-1 text-base tracking-[0.32px]">
-          Launch yourself or discover someone before they do.
+          {mode === "self"
+            ? "Launch a market for your verified X account."
+            : mode === "scout"
+              ? "Launch their profile market and earn a percentage of their fees."
+              : "A wallet is enough. This track is not tied to an X profile."}
         </p>
 
+        {mode !== "meme" && (
         <div className="mt-8 flex flex-wrap gap-6 text-sm">
           {STEPS.map((label, index) => (
             <span
@@ -549,11 +677,95 @@ export function LaunchLive() {
             </span>
           ))}
         </div>
+        )}
 
-        {step === 1 && (
+        {mode === "meme" && (
+          <MemeLaunchForm
+            name={memeName}
+            onName={setMemeName}
+            symbol={memeSymbol}
+            onSymbol={setMemeSymbol}
+            description={memeDescription}
+            onDescription={setMemeDescription}
+            website={memeWebsite}
+            onWebsite={setMemeWebsite}
+            telegram={memeTelegram}
+            onTelegram={setMemeTelegram}
+            twitter={memeTwitter}
+            onTwitter={setMemeTwitter}
+            tax={memeTax}
+            onTax={setMemeTax}
+            preview={memePreview}
+            onImage={(file) => {
+              setError("");
+              if (!file) return;
+              if (!file.type.startsWith("image/")) {
+                setError("Choose an image file.");
+                return;
+              }
+              if (file.size > 5 * 1024 * 1024) {
+                setError("Image must be 5 MB or smaller.");
+                return;
+              }
+              setMemePreview((current) => {
+                if (current) URL.revokeObjectURL(current);
+                return URL.createObjectURL(file);
+              });
+              setMemeFile(file);
+            }}
+            pairs={visiblePairs}
+            pairKind={pairKind}
+            onPairKind={setPairKind}
+            search={search}
+            onSearch={setSearch}
+            pairToken={pairToken}
+            onPair={(address) => {
+              if (address.toLowerCase() !== pairToken?.toLowerCase()) setOpeningAsset("eth");
+              setPairToken(address);
+            }}
+            selectedPair={selectedPair}
+            openingAmount={openingAmount}
+            onOpeningAmount={setOpeningAmount}
+            openingAsset={openingAsset}
+            onOpeningAsset={setOpeningAsset}
+            paySymbol={paySymbol}
+            payInEth={payInEth}
+            hasOpeningBuy={hasOpeningBuy}
+            openingValue={openingValue}
+            buyPresets={buyPresets}
+            busy={busy}
+            launchLabel={!identity.authenticated ? "Log in" : !wallet ? "Connect wallet" : busy ? busyLabel : "Launch"}
+            onLaunch={async () => {
+              setError("");
+              if (!identity.authenticated) {
+                identity.login();
+                return;
+              }
+              if (!wallet) {
+                await identity.connectOrCreateWallet();
+                return;
+              }
+              if (!memeName.trim() || !memeSymbol.trim()) {
+                setError("Enter a name and a ticker.");
+                return;
+              }
+              if (!/^[A-Za-z][A-Za-z0-9]{0,9}$/.test(memeSymbol.trim())) {
+                setError("Use a ticker of up to 10 letters and numbers, starting with a letter.");
+                return;
+              }
+              if (!pairToken) {
+                setError("Choose what this token is paired with.");
+                return;
+              }
+              await submit();
+            }}
+          />
+        )}
+
+        {step === 1 && mode !== "meme" && (
           <div className="mt-6">
             <h2 className="text-[23px] font-bold tracking-[-0.69px]">
-              {mode === "self" ? "Verify your identity" : "Scout an X profile"}
+              {mode === "self" ? "Your X account" : "Choose a creator"}
             </h2>
             {mode === "scout" && (
               <p className="mt-1 text-base tracking-[0.32px] text-[#737373]">
@@ -578,10 +790,6 @@ export function LaunchLive() {
                   the token.
                 </p>
               )
-            ) : !identity.xAccount ? (
-              <p className="mt-8 text-sm text-[#7f7f7f]">
-                Link your X account before you scout a profile.
-              </p>
             ) : (
               <div className="mt-8">
                 <label className="block text-base" htmlFor="scout-handle">
@@ -688,11 +896,11 @@ export function LaunchLive() {
                 type="button"
                 onClick={continueIdentity}
                 disabled={
-                  mode === "scout" &&
-                  identity.authenticated &&
-                  !!wallet &&
-                  !!identity.xAccount &&
-                  !scoutProfile
+                  (mode === "scout" &&
+                    identity.authenticated &&
+                    !!wallet &&
+                    !scoutProfile) ||
+                  (identityReady && waitingOnExisting)
                 }
                 className={`${continueButton} mt-10 w-full`}
               >
@@ -702,13 +910,17 @@ export function LaunchLive() {
           </div>
         )}
 
-        {step === 2 && (
+        {mode !== "meme" && step === 2 && (
           <div className="mt-8">
             <h2 className="text-[23px] font-bold tracking-[-0.69px]">
               Choose your Stock Token
             </h2>
             <p className="text-base tracking-[0.32px] text-[#737373]">
-              Your profile token will trade against this asset.
+              {mode === "self"
+                ? "Your profile token will trade against this asset."
+                : mode === "scout"
+                  ? "Their profile token will trade against this asset."
+                  : "This token will trade against this asset."}
             </p>
             <p className="mt-6 text-base">Pair with</p>
             <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -773,7 +985,7 @@ export function LaunchLive() {
           </div>
         )}
 
-        {step === 3 && (
+        {mode !== "meme" && step === 3 && (
           <div className="mt-8">
             <h2 className="text-[23px] font-bold tracking-[-0.69px]">
               Start your market
@@ -857,7 +1069,7 @@ export function LaunchLive() {
           </div>
         )}
 
-        {step === 4 && (
+        {mode !== "meme" && step === 4 && (
           <div className="mt-8">
             <div className="flex items-center gap-5">
               <Avatar src={avatar} label={symbol || displayName} size={58} />
@@ -874,7 +1086,7 @@ export function LaunchLive() {
                 <div className="flex items-center gap-2">
                   {selectedPair?.iconUrl && (
                     <img
-                      src={selectedPair.iconUrl}
+                      src={pairIconSrc(selectedPair.iconUrl)}
                       alt=""
                       width={40}
                       height={40}
@@ -1056,7 +1268,7 @@ function PairCard({
       }`}
     >
       <img
-        src={pair.iconUrl}
+        src={pairIconSrc(pair.iconUrl)}
         alt=""
         width={34}
         height={34}
@@ -1114,6 +1326,10 @@ function StepFooter({
   );
 }
 
+function shortAddress(value: string) {
+  return `${value.slice(0, 6)}…${value.slice(-4)}`;
+}
+
 function LaunchSuccessDialog({
   launch,
   onClose,
@@ -1123,6 +1339,30 @@ function LaunchSuccessDialog({
   onClose: () => void;
   onView: () => void;
 }) {
+  const [copied, setCopied] = useState(false);
+  const profile = launch.kind !== "meme";
+  const handle = profile ? `@${launch.symbol}` : launch.symbol.toUpperCase();
+  const headline = profile
+    ? `${handle} is now live on ROVO`
+    : `${launch.name} is now live on ROVO`;
+  const stat =
+    launch.kind === "scout"
+      ? { label: "Rover royalty", value: "15%" }
+      : launch.kind === "self"
+        ? { label: "Creator share", value: "70%" }
+        : {
+            label: "Creator tax",
+            value: `${Number(launch.creatorTax.toFixed(1))}%`,
+          };
+  const shareText = profile ? `Share with ${handle}` : `Share ${launch.name}`;
+  const share = () => {
+    const page = launch.mint
+      ? `${window.location.origin}/token/${launch.mint}`
+      : window.location.href;
+    const href = `https://x.com/intent/tweet?text=${encodeURIComponent(headline)}&url=${encodeURIComponent(page)}`;
+    window.open(href, "_blank", "noopener,noreferrer");
+  };
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -1146,7 +1386,7 @@ function LaunchSuccessDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="launch-success-title"
-        className="motion-panel relative w-full max-w-[440px] rounded-3xl border border-white/10 bg-[#141414] p-6 text-white shadow-[0_24px_80px_rgba(0,0,0,0.55)]"
+        className="motion-panel relative w-full max-w-[720px] rounded-[20px] bg-[#191919] px-6 py-7 text-white shadow-[0_24px_80px_rgba(0,0,0,0.55)] sm:px-11 sm:py-8"
       >
         <button
           type="button"
@@ -1156,84 +1396,80 @@ function LaunchSuccessDialog({
         >
           ×
         </button>
-        <div className="flex size-12 items-center justify-center rounded-full bg-[#ccff00] text-black">
-          <svg viewBox="0 0 24 24" aria-hidden="true" className="size-6">
-            <path
-              d="M5 12.5 9.2 17 19 7"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.4"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-        </div>
-        <h2 id="launch-success-title" className="mt-4 text-[28px] font-semibold tracking-[-0.6px]">
-          Launch successful
-        </h2>
-        <p className="mt-1 text-sm text-[#8a8a8a]">Your profile token is live.</p>
-        <div className="mt-6 overflow-hidden rounded-2xl border border-white/8 bg-[#0e0e0e]">
-          <CopyRow label="Name" value={launch.name} />
-          <CopyRow label="Symbol" value={launch.symbol} />
-          <CopyRow label="Mint" value={launch.mint} mono last />
-        </div>
-        <a
-          href={`https://robinhoodchain.blockscout.com/tx/${launch.txHash}`}
-          target="_blank"
-          rel="noreferrer"
-          className="mt-5 flex h-11 items-center justify-center rounded-xl border border-[#333] text-sm font-medium text-white"
+        {profile ? (
+          <div className="inline-flex items-center gap-1 rounded-[5px] bg-[#212121] p-1">
+            <span
+              className={`flex h-[33px] w-[118px] items-center justify-center rounded-[5px] text-base ${launch.kind === "self" ? "border border-[#e1ff1f] bg-[#ccff00] font-medium text-black" : "bg-[#383838] text-[#7f7f7f]"}`}
+            >
+              Self-Rove
+            </span>
+            <span
+              className={`flex h-[33px] w-[119px] items-center justify-center rounded-[5px] text-base ${launch.kind === "scout" ? "border border-[#e1ff1f] bg-[#ccff00] font-medium text-black" : "bg-[#383838] text-[#7f7f7f]"}`}
+            >
+              Scout
+            </span>
+          </div>
+        ) : (
+          <span className="inline-flex h-[33px] items-center justify-center rounded-[5px] border border-[#e1ff1f] bg-[#ccff00] px-5 text-base font-medium text-black">
+            Meme
+          </span>
+        )}
+        <p className="mt-6 text-base tracking-[0.32px]">
+          {launch.kind === "scout" ? "Unclaimed" : "Live"}
+        </p>
+        <h2
+          id="launch-success-title"
+          className="mt-2 max-w-[685px] text-[32px] font-bold leading-[41px] tracking-[-1.2px] sm:text-[40px]"
         >
-          View transaction
-        </a>
+          {headline}
+        </h2>
+        <p className="mt-2 text-base tracking-[0.32px]">
+          <span className="font-bold">{handle}</span>
+          <span> / {launch.pair}</span>
+        </p>
+        <p className="mt-6 text-base tracking-[0.32px]">{stat.label}</p>
+        <p className="mt-1 text-[40px] font-bold leading-[41px] tracking-[-1.2px] text-[#ccff00]">
+          {stat.value}
+        </p>
+        <div className="mt-6 flex items-center justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-base tracking-[0.32px]">Token address</p>
+            <p className="mt-1 truncate font-mono text-sm">
+              {launch.mint ? shortAddress(launch.mint) : "Waiting for the token address"}
+            </p>
+          </div>
+          <button
+            type="button"
+            disabled={!launch.mint}
+            onClick={() => {
+              if (!launch.mint) return;
+              void navigator.clipboard.writeText(launch.mint).then(
+                () => setCopied(true),
+                () => setCopied(true),
+              );
+              window.setTimeout(() => setCopied(false), 1500);
+            }}
+            className="shrink-0 text-base font-semibold text-[#ccff00] disabled:text-[#555]"
+          >
+            {copied ? "Copied" : "Copy"}
+          </button>
+        </div>
         <button
           type="button"
           disabled={!launch.mint}
           onClick={onView}
-          className="mt-3 flex h-[52px] w-full items-center justify-center rounded-xl bg-[#ccff00] text-base font-semibold text-black disabled:cursor-not-allowed disabled:opacity-45"
+          className="mt-8 flex h-[53px] w-full items-center justify-center rounded-[10px] bg-[#ccff00] text-base font-semibold text-black disabled:cursor-not-allowed disabled:opacity-45"
         >
-          View token
+          View market
+        </button>
+        <button
+          type="button"
+          onClick={share}
+          className="mt-6 block w-full text-center text-base font-semibold"
+        >
+          {shareText}
         </button>
       </section>
-    </div>
-  );
-}
-
-function CopyRow({
-  label,
-  value,
-  mono = false,
-  last = false,
-}: {
-  label: string;
-  value: string | null;
-  mono?: boolean;
-  last?: boolean;
-}) {
-  const [copied, setCopied] = useState(false);
-  const text = value ?? "Waiting for the token address";
-
-  return (
-    <div className={`flex items-center gap-4 px-4 py-3.5 ${last ? "" : "border-b border-white/8"}`}>
-      <div className="min-w-0 flex-1">
-        <p className="text-[11px] font-medium uppercase tracking-[0.14em] text-[#737373]">{label}</p>
-        <p className={`mt-1 truncate text-sm text-white ${mono ? "font-mono" : ""}`}>{text}</p>
-      </div>
-      <button
-        type="button"
-        disabled={!value}
-        onClick={() => {
-          if (!value) return;
-          void navigator.clipboard.writeText(value).then(
-            () => setCopied(true),
-            () => setCopied(true),
-          );
-          window.setTimeout(() => setCopied(false), 1500);
-        }}
-        aria-label={copied ? `${label} copied` : `Copy ${label}`}
-        className="shrink-0 text-sm font-semibold text-[#ccff00] disabled:text-[#555]"
-      >
-        {copied ? "Copied" : "Copy"}
-      </button>
     </div>
   );
 }

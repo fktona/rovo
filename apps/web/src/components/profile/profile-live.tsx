@@ -11,6 +11,7 @@ import {
   useTokenForHandle,
   useXAccount,
 } from "@/hooks/useRovoQueries";
+import { CreatorIdentity } from "@/components/creator-identity";
 import { useToast } from "@/components/toast/toast-provider";
 import { feeShareBps, splitFees } from "@/lib/fee-split";
 import { formatUsd } from "@/lib/token-market";
@@ -119,6 +120,11 @@ export function ProfileLive() {
       <h1 className="text-[28px] font-bold tracking-[-0.6px] sm:text-3xl">
         Your profile
       </h1>
+      <p className="mt-2 max-w-xl text-sm leading-6 text-[#8a8a8a]">
+        During the contract audit, trading fees collected by Rovo go to the X
+        Money wallet. That transfer does not automatically pay your creator or
+        scout share.
+      </p>
       {!identity.authenticated ? (
         <div className="mt-6">
           <p className="text-sm text-[#999]">
@@ -135,6 +141,7 @@ export function ProfileLive() {
       ) : (
         <>
           <div className="mt-6">
+            {handle ? <CreatorIdentity handle={handle} /> : null}
             {identity.xAccount && handle && face ? (
               profileToken ? (
                 <Link

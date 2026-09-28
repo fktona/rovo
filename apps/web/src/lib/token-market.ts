@@ -37,6 +37,7 @@ export type DexscreenerPair = {
   fdv?: number | null;
   priceUsd?: string | number | null;
   liquidity?: { usd?: number | null } | null;
+  volume?: { h24?: number | null } | null;
 };
 
 /** Quote paid for one whole token: quoteReserve / tokenReserve, scaled to token decimals. */
@@ -77,7 +78,12 @@ function pairPriceUsd(pair: DexscreenerPair) {
 export function dexscreenerStats(
   pairs: DexscreenerPair[],
   token: string,
-): { marketCap: number; priceUsd: number | null } | null {
+): {
+  marketCap: number;
+  priceUsd: number | null;
+  liquidityUsd: number | null;
+  volume24hUsd: number | null;
+} | null {
   const ranked = rankedRobinhoodPairs(pairs, token);
   const pair =
     ranked.find(
@@ -90,7 +96,16 @@ export function dexscreenerStats(
       ? pair.marketCap
       : pair.fdv;
   if (typeof marketCap !== "number") return null;
-  return { marketCap, priceUsd: pairPriceUsd(pair) };
+  const liquidity = pair.liquidity?.usd;
+  const volume = pair.volume?.h24;
+  return {
+    marketCap,
+    priceUsd: pairPriceUsd(pair),
+    liquidityUsd:
+      typeof liquidity === "number" && Number.isFinite(liquidity) ? liquidity : null,
+    volume24hUsd:
+      typeof volume === "number" && Number.isFinite(volume) ? volume : null,
+  };
 }
 
 /** USD market cap from DexScreener pairs, preferring the deepest pool for this token. */

@@ -8,6 +8,20 @@ const userSchema = z.object({
   username: z.string().min(1),
   name: z.string().nullable().optional(),
   profile_image_url: z.url().nullable().optional(),
+  description: z.string().nullable().optional(),
+  profile_banner_url: z.string().nullable().optional(),
+  url: z.string().nullable().optional(),
+  entities: z
+    .object({
+      url: z
+        .object({
+          urls: z
+            .array(z.object({ expanded_url: z.string().optional() }))
+            .optional(),
+        })
+        .optional(),
+    })
+    .optional(),
   public_metrics: z
     .object({ followers_count: z.number().int().nonnegative() })
     .optional(),
@@ -16,7 +30,19 @@ const userSchema = z.object({
 });
 
 const userFields =
-  "id,name,username,profile_image_url,public_metrics,verified,verified_type";
+  "id,name,username,profile_image_url,description,profile_banner_url,url,entities,public_metrics,verified,verified_type";
+
+function httpUrl(value: string | null | undefined) {
+  if (!value) return null;
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" || url.protocol === "http:"
+      ? url.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
 
 function isVerified(user: z.infer<typeof userSchema>) {
   if (user.verified === true) return true;
@@ -43,6 +69,10 @@ function toProfile(user: z.infer<typeof userSchema>): PublicXProfile {
     imageUrl: user.profile_image_url ?? null,
     followers: user.public_metrics?.followers_count ?? null,
     verified: isVerified(user),
+    description: user.description?.trim() ? user.description.trim() : null,
+    bannerUrl: httpUrl(user.profile_banner_url),
+    website:
+      httpUrl(user.entities?.url?.urls?.[0]?.expanded_url) ?? httpUrl(user.url),
   };
 }
 

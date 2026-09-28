@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { TokenPriceChart } from "./token-chart";
 import { TokenTradePanel } from "./token-trade";
-import { ScoutedBy } from "@/components/scout-by";
+import { TokenProfileCard } from "@/components/creator-identity";
 import { CHART_RANGES, useTokenPageData, type ChartRange } from "./use-token-page-data";
 
 const asset = (name: string) => `/figma-token/${name}`;
@@ -14,6 +14,19 @@ function shortAddress(value: string) {
 
 function hasEarnings(value: string | null) {
   return value != null && value !== "—";
+}
+
+function profileStats(data: ReturnType<typeof useTokenPageData>) {
+  return [
+    { label: "Market cap", value: data.marketCapLabel },
+    { label: "Token price", value: data.priceLabel },
+    { label: "24h Volume", value: data.volumeLabel },
+    {
+      label: "24h change",
+      value: data.changeLabel,
+      tone: data.changeUp ? "text-[#00e829]" : "text-[red]",
+    },
+  ];
 }
 
 function MobileTokenPage({
@@ -41,40 +54,18 @@ function MobileTokenPage({
 
   return (
     <main className="min-h-full bg-black px-4 pb-28 text-white md:hidden">
-      <div className="flex items-center justify-between gap-3 pt-3">
-        <div className="flex min-w-0 items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={data.image}
-            alt=""
-            width={56}
-            height={56}
-            referrerPolicy="no-referrer"
-            className="size-14 shrink-0 rounded-xl object-cover"
-          />
-          <div className="min-w-0">
-            <div className="flex items-center gap-2">
-              <h1 className="truncate text-xl font-bold">{data.name}</h1>
-              {data.status && (
-                <span className="rounded-md bg-[#222] px-1.5 py-0.5 text-[10px] text-[#aaa]">
-                  {data.status}
-                </span>
-              )}
-            </div>
-            <span className="text-sm text-[#888]">@{data.handle || "token"}</span>
-            {data.scout ? (
-              <div className="mt-2">
-                <ScoutedBy scout={data.scout} />
-              </div>
-            ) : null}
-          </div>
-        </div>
-        <div className="min-w-0 shrink-0 text-right">
-          <strong className="block text-lg">{data.priceLabel}</strong>
-          <span className={`text-xs font-semibold ${data.changeUp ? "text-[#39d353]" : "text-[#ff4edc]"}`}>
-            {data.changeLabel} 24h
-          </span>
-        </div>
+      <div className="pt-3">
+        <TokenProfileCard
+          token={token}
+          name={data.name}
+          handle={data.handle}
+          image={data.image}
+          status={data.status}
+          pairLabel={data.pairLabel}
+          {...(data.pairIcon ? { pairIcon: data.pairIcon } : {})}
+          scout={data.scout}
+          stats={profileStats(data)}
+        />
       </div>
 
       <section
@@ -251,117 +242,23 @@ function MobileTokenPage({
 export function TokenPage({ token }: { token: string }) {
   const [range, setRange] = useState<ChartRange>("1d");
   const [panel, setPanel] = useState<"trades" | "holders">("trades");
-  const [copied, setCopied] = useState(false);
   const data = useTokenPageData(token, range);
-
-  const copyContract = async () => {
-    try {
-      await navigator.clipboard.writeText(token);
-    } catch {
-      // The browser can block clipboard access; the label still confirms the tap.
-    }
-    setCopied(true);
-  };
 
   return (
     <>
       <MobileTokenPage token={token} data={data} range={range} onRange={setRange} />
       <main className="mx-auto hidden w-full max-w-[1215px] flex-col gap-5 px-4 py-4 sm:px-6 md:flex lg:gap-6 lg:py-6">
-        <section className="rounded-[20px] bg-[#191919] p-4 sm:p-7">
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div className="flex min-w-0 gap-4 sm:gap-6">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={data.image}
-                alt=""
-                width={82}
-                height={82}
-                referrerPolicy="no-referrer"
-                className="size-[82px] shrink-0 rounded-full object-cover"
-              />
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-3xl font-bold tracking-tight text-white sm:text-[40px] sm:leading-[41px]">
-                    {data.name}
-                  </h1>
-                  {data.status && (
-                    <span className="rounded-full border border-[#616161] px-1.5 py-1 text-xs text-[#7f7f7f]">
-                      {data.status}
-                    </span>
-                  )}
-                </div>
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-[#7f7f7f]">
-                  <span className="font-medium tracking-[0.32px] text-[#737373]">
-                    @{data.handle || "token"}
-                  </span>
-                  {data.scout ? (
-                    <>
-                      <span className="size-1.5 rounded-full bg-[#737373]" />
-                      <ScoutedBy scout={data.scout} />
-                    </>
-                  ) : null}
-                  <span className="size-1.5 rounded-full bg-[#737373]" />
-                  <span className="inline-flex items-center gap-2">
-                    Paired with
-                    {data.pairIcon && (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={data.pairIcon}
-                        alt=""
-                        width={27}
-                        height={27}
-                        className="size-[27px] rounded-full object-cover"
-                      />
-                    )}
-                    {data.pairLabel}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={copyContract}
-                    className="inline-flex h-7 items-center gap-2 rounded border border-[#616161] px-1.5 text-xs text-white"
-                  >
-                    {copied ? "Copied" : `CA: ${shortAddress(token)}`}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={asset("copy.svg")} alt="" />
-                  </button>
-                </div>
-              </div>
-            </div>
-            {data.handle && (
-              <div className="flex gap-2">
-                <a
-                  href={`https://x.com/${data.handle.replace(/^@/, "")}`}
-                  aria-label="X"
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex size-10 items-center justify-center rounded-[10px] bg-[#212121]"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={asset("x.svg")} alt="" />
-                </a>
-              </div>
-            )}
-          </div>
-          <dl className="mt-8 grid grid-cols-2 gap-4 border-t border-[#383838] pt-5 sm:grid-cols-4">
-            {[
-              ["Market Cap", data.marketCapLabel, "text-white"],
-              ["Token price", data.priceLabel, "text-white"],
-              ["24h Volume", data.volumeLabel, "text-white"],
-              ["24h changed", data.changeLabel, data.changeUp ? "text-[#00e829]" : "text-[red]"],
-            ].map(([label, value, color]) => (
-              <div key={label} className="min-w-0">
-                <dt className="text-sm font-medium tracking-[0.32px] text-[#737373] sm:text-base">
-                  {label}
-                </dt>
-                <dd
-                  className={`mt-1 text-lg font-bold tracking-tight sm:text-xl ${color}`}
-                >
-                  {value}
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </section>
+        <TokenProfileCard
+          token={token}
+          name={data.name}
+          handle={data.handle}
+          image={data.image}
+          status={data.status}
+          pairLabel={data.pairLabel}
+          {...(data.pairIcon ? { pairIcon: data.pairIcon } : {})}
+          scout={data.scout}
+          stats={profileStats(data)}
+        />
 
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_347px]">
           <section className="rounded-[20px] bg-[#191919] p-4 sm:p-6">

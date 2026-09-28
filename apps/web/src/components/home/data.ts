@@ -6,13 +6,10 @@ export type Token = {
   symbol: string;
   image: string;
   marketCap: string | null;
-  // volume24h: string;
+  price: string | null;
   created: string;
   age: string;
-  // change24h: string;
-  creatorFee: string | null;
   marketCapUsd: number | null;
-  creatorFeeUsd: number | null;
   graduated: boolean;
   launchedAt: number;
   pair: Pair;

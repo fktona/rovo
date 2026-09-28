@@ -8,32 +8,16 @@ import { useXAccount } from "@/hooks/useRovoQueries";
 import { useFeeAdmin } from "@/hooks/useRovoQueries";
 import type { Address } from "viem";
 import { onboardingSeen } from "@/lib/onboarding";
+import { useToast } from "@/components/toast/toast-provider";
 import { AssetIcon, icons } from "../home/assets";
 import { styles } from "../home/styles";
+import { DocsIcon, HomeIcon, LaunchIcon, ProfileIcon, RewardsIcon } from "./icon";
 
 const navigation = [
-  { label: "Home", href: "/", icon: icons.home, width: 17, height: 17 },
-  {
-    label: "Launch",
-    href: "/launch",
-    icon: icons.launch,
-    width: 20,
-    height: 20,
-  },
-  {
-    label: "Rewards",
-    href: "/rewards",
-    icon: icons.rewards,
-    width: 21,
-    height: 21,
-  },
-  {
-    label: "Profile",
-    href: "/profile",
-    icon: icons.profile,
-    width: 18,
-    height: 18,
-  },
+  { label: "Home", href: "/", icon: HomeIcon },
+  { label: "Launch", href: "/launch", icon: LaunchIcon },
+  { label: "Rewards", href: "/rewards", icon: RewardsIcon },
+  { label: "Profile", href: "/profile", icon: ProfileIcon },
 ];
 
 const rail = "w-[4.5rem]";
@@ -72,28 +56,6 @@ function viewportKind() {
   if (window.matchMedia("(max-width: 767px)").matches) return "mobile";
   if (window.matchMedia("(max-width: 1023px)").matches) return "tablet";
   return "desktop";
-}
-
-function DocsIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
-      <path
-        d="M4.5 1.75h6.2L14.25 5.3V15.5a.75.75 0 0 1-.75.75h-9a.75.75 0 0 1-.75-.75v-13a.75.75 0 0 1 .75-.75Z"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinejoin="round"
-      />
-      <path
-        d="M10.5 1.75V5.5h3.75M6.25 9h5.5M6.25 12h5.5"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.4"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 function Chevron({ left = false }: { left?: boolean }) {
@@ -215,12 +177,10 @@ function Sidebar({
                     active ? styles.navLinkActive : ""
                   }`}
                 >
-                  <span className="flex size-6 shrink-0 items-center justify-center">
-                    <AssetIcon
-                      src={item.icon}
-                      width={item.width}
-                      height={item.height}
-                    />
+                  <span
+                    className={`flex size-6 shrink-0 items-center justify-center ${active ? "text-[#ccff00]" : "text-white"}`}
+                  >
+                    <item.icon />
                   </span>
                   <span className={labelClass}>{item.label}</span>
                   <span aria-hidden="true" className={tooltipClass}>
@@ -247,7 +207,9 @@ function Sidebar({
             onClick={onNavigate}
             className={`group relative flex items-center gap-2.5 rounded-[15px] py-2.5 text-sm font-medium tracking-[.02em] hover:bg-[#111] lg:py-3 lg:text-base ${itemAlign} ${isActive(pathname, "/docs") ? styles.navLinkActive : ""}`}
           >
-            <span className="flex size-6 shrink-0 items-center justify-center">
+            <span
+              className={`flex size-6 shrink-0 items-center justify-center ${isActive(pathname, "/docs") ? "text-[#ccff00]" : "text-white"}`}
+            >
               <DocsIcon />
             </span>
             <span className={labelClass}>Docs</span>
@@ -303,18 +265,24 @@ function BottomNav() {
                 </span>
               ) : (
                 <span
-                  className={`flex size-11 items-center justify-center [&_img]:max-h-6 [&_img]:max-w-6 ${active ? "opacity-100" : "opacity-50"}`}
+                  className={`flex size-11 items-center justify-center ${active ? "text-[#ccff00]" : "text-white/50"}`}
                 >
-                  <AssetIcon
-                    src={item.icon}
-                    width={item.width}
-                    height={item.height}
-                  />
+                  <item.icon />
                 </span>
               )}
             </Link>
           );
         })}
+      <Link
+        href="/docs"
+        aria-label="Docs"
+        aria-current={isActive(pathname, "/docs") ? "page" : undefined}
+        className={`order-5 flex min-w-0 flex-1 items-center justify-center ${isActive(pathname, "/docs") ? "text-[#ccff00]" : "text-white/50"}`}
+      >
+        <span className="flex size-11 items-center justify-center">
+          <DocsIcon />
+        </span>
+      </Link>
       {!authenticated && (
         <LoginControl className="order-2 min-w-0 flex-1 text-xs font-semibold text-[#ccff00]" />
       )}
@@ -530,6 +498,81 @@ function ChevronDown() {
   );
 }
 
+const rovoTokenAddress = process.env.NEXT_PUBLIC_ROVO_TOKEN_ADDRESS;
+const rovoCa =
+  rovoTokenAddress && /^0x[a-fA-F0-9]{40}$/.test(rovoTokenAddress)
+    ? rovoTokenAddress
+    : null;
+
+function ThemeToggle() {
+  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  useEffect(() => {
+    setTheme(document.documentElement.dataset.theme === "light" ? "light" : "dark");
+  }, []);
+  const next = theme === "dark" ? "light" : "dark";
+  return (
+    <button
+      type="button"
+      aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+      onClick={() => {
+        document.documentElement.dataset.theme = next;
+        localStorage.setItem("rovo-theme", next);
+        setTheme(next);
+      }}
+      className="flex size-10 shrink-0 items-center justify-center rounded-full text-white hover:bg-[#191919]"
+    >
+      {theme === "dark" ? <SunIcon /> : <MoonIcon />}
+    </button>
+  );
+}
+
+function SunIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <circle cx="9" cy="9" r="3.2" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <path
+        d="M9 1.8v1.8M9 14.4v1.8M1.8 9h1.8M14.4 9h1.8M3.7 3.7l1.3 1.3M13 13l1.3 1.3M13 5 14.3 3.7M3.7 14.3 5 13"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
+      <path
+        d="M14.2 11.4A5.8 5.8 0 0 1 6.6 3.8 6.2 6.2 0 1 0 14.2 11.4Z"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function RovoAddress() {
+  const toast = useToast();
+  if (!rovoCa) return null;
+  return (
+    <button
+      type="button"
+      onClick={async () => {
+        await navigator.clipboard.writeText(rovoCa);
+        toast.success("$ROVO address copied");
+      }}
+      className="hidden h-10 shrink-0 items-center gap-1.5 rounded-full px-2 text-xs font-medium text-white hover:bg-[#191919] sm:inline-flex sm:px-3 sm:text-sm"
+    >
+      $ROVO {sliceAddress(rovoCa)}
+      <CopyIcon />
+    </button>
+  );
+}
+
 function Header({
   search,
   onSearch,
@@ -562,6 +605,8 @@ function Header({
           <AssetIcon src={icons.logo} alt="Rovo" width={112} height={34} />
         </Link>
         <div className="flex items-center justify-end gap-1 justify-self-end md:order-3">
+          <RovoAddress />
+          <ThemeToggle />
           {!authenticated && (
             <button
               type="button"

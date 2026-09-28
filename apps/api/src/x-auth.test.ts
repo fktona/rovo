@@ -70,7 +70,7 @@ describe("selectXTokens", () => {
 });
 
 describe("XOAuth", () => {
-  it("replaces a base64 token pair and stores the decoded values", async () => {
+  it("stores a pasted token pair in the same form X issued", async () => {
     const saved: Array<{ accessToken: string; refreshToken: string; expiresAt: number }> = [];
     const oauth = new XOAuth({
       accessToken: access,
@@ -86,9 +86,9 @@ describe("XOAuth", () => {
     await expect(oauth.replace(nextAccess, nextRefresh)).resolves.toEqual({
       expiresAt: new Date(1990000000000).toISOString(),
     });
-    expect(saved[0]?.accessToken).toBe("next-access:1990000000000:1:0:at:1");
-    expect(saved[0]?.refreshToken).toBe("next-refresh:1990000000000:1:0:rt:1");
-    await expect(oauth.getAccessToken()).resolves.toBe("next-access:1990000000000:1:0:at:1");
+    expect(saved[0]?.accessToken).toBe(nextAccess);
+    expect(saved[0]?.refreshToken).toBe(nextRefresh);
+    await expect(oauth.getAccessToken()).resolves.toBe(nextAccess);
   });
 
   it("refreshes an expired access token and saves the new pair", async () => {

@@ -12,7 +12,7 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-export const launchType = pgEnum("launch_type", ["scout", "self"]);
+export const launchType = pgEnum("launch_type", ["scout", "self", "meme"]);
 export const revenueState = pgEnum("revenue_state", [
   "unswept",
   "swept_unclaimed",

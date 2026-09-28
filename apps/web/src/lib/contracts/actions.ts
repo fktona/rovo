@@ -24,6 +24,8 @@ import {
   erc20Abi,
   holderRewardsAbi,
   nottinghamAbi,
+  ponsFactoryAbi,
+  ponsLaunchAndBuyAbi,
   registryAbi,
   splitterAbi,
   wrapperAbi,
@@ -49,7 +51,7 @@ import {
   tradeValue,
 } from "./helpers";
 import { createRovoReads, type RovoPublicClient } from "./reads";
-import type { ScoutInput, SelfRoveInput, TradeInput } from "./types";
+import type { LaunchInput, ScoutInput, SelfRoveInput, TradeInput } from "./types";
 
 function assertLaunchInput(input: ScoutInput | SelfRoveInput) {
   asAddress(input.pairToken, "pair token");
@@ -233,6 +235,87 @@ export function createRovoActions(deps: {
           ? encodeFunctionData({ abi: wrapperAbi, functionName: "launchSelfRoveAndBuy", args: [...args, input.openingBuy.quoteIn, input.openingBuy.minTokensOut] })
           : encodeFunctionData({ abi: wrapperAbi, functionName: "launchSelfRove", args }),
         (await reads.launchFee()) + buyValue,
+      );
+    },
+    async launchMeme(input: LaunchInput & { creatorTaxBps: number }) {
+      assertLaunchInput(input);
+      const tax = Number(asUint(input.creatorTaxBps, 16, "creator tax"));
+      const factory = await client.readContract({
+        address: addresses.wrapper,
+        abi: wrapperAbi,
+        functionName: "pons",
+      });
+      const [allowed, maxTax, expectedEconomics] = await Promise.all([
+        client.readContract({
+          address: factory,
+          abi: ponsFactoryAbi,
+          functionName: "canLaunch",
+          args: [account],
+        }),
+        client.readContract({
+          address: factory,
+          abi: ponsFactoryAbi,
+          functionName: "maxCreatorTaxBps",
+        }),
+        client.readContract({
+          address: factory,
+          abi: ponsFactoryAbi,
+          functionName: "previewLaunchEconomics",
+          args: [BigInt(input.launchConfigId), input.pairToken],
+        }),
+      ]);
+      if (!allowed) throw new Error("This wallet cannot launch on Pons yet.");
+      if (tax > maxTax) throw new Error("Creator tax is above the Pons maximum.");
+      if (input.pairToken !== zeroAddress) {
+        const economics = await reads.pairEconomics(input.pairToken);
+        if (!economics.approved || economics.phantomQuote === 0n || economics.graduationThreshold === 0n)
+          throw new Error("Pons does not allow this pair token");
+      }
+      const treasury = await reads.treasury();
+      if (treasury === zeroAddress) throw new Error("Fee treasury is not configured.");
+      const params = {
+        name: input.metadata.name,
+        symbol: input.metadata.symbol,
+        logo: input.metadata.logo,
+        description: input.metadata.description,
+        socials: input.metadata.socials,
+        creatorFeeRecipient: treasury,
+        creatorTaxBps: tax,
+        buybackEnabled: false,
+        expectedEconomics,
+        salt: input.metadata.salt,
+      } as const;
+      const fee = await reads.launchFee();
+      if (!input.openingBuy) {
+        return send(
+          factory,
+          encodeFunctionData({
+            abi: ponsFactoryAbi,
+            functionName: "launchToken",
+            args: [params, BigInt(input.launchConfigId), input.pairToken],
+          }),
+          fee,
+        );
+      }
+      const router = await reads.atomicLaunchRouter();
+      const value =
+        input.pairToken === zeroAddress ? fee + input.openingBuy.quoteIn : fee;
+      return send(
+        router,
+        encodeFunctionData({
+          abi: ponsLaunchAndBuyAbi,
+          functionName: "launchAndBuy",
+          args: [
+            params,
+            BigInt(input.launchConfigId),
+            input.pairToken,
+            input.openingBuy.quoteIn,
+            input.openingBuy.minTokensOut,
+            account,
+            [],
+          ],
+        }),
+        value,
       );
     },
     async launchScout(input: ScoutInput) {

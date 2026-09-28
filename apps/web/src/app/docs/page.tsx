@@ -87,14 +87,14 @@ export default function DocsPage() {
         </div>
 
         <Section id="overview" eyebrow="01 / Use Rovo" title="Welcome">
-          <p>Rovo lets people launch tokens tied to X profiles. Choose <strong className="text-white">Self-Rove</strong> to launch your own profile or <strong className="text-white">Scout</strong> to launch a token for a profile that has not launched yet. A token trades against a chosen asset, such as ETH, USDG, or an available Stock Token.</p>
-          <p>You need a connected wallet on Robinhood Chain to submit transactions. Link your X account to launch yourself or claim a Scout token made for your profile. Opening a wallet, launching, buying, and claiming all require network transactions and may cost gas.</p>
+          <p>Rovo lets people launch tokens tied to X profiles. Choose <strong className="text-white">Your X profile</strong> to launch the account you own, or <strong className="text-white">Another creator</strong> to launch a token for a profile that has not launched yet. A token trades against a chosen asset, such as ETH, USDG, or an available Stock Token. Meme tokens are a separate wallet-only track and are not tied to an X account.</p>
+          <p>You need a connected wallet on Robinhood Chain to submit transactions. Link your X account to launch your own profile or claim a token made for it. Launching another creator does not require your own X account. Opening a wallet, launching, buying, and claiming all require network transactions and may cost gas.</p>
           {/* <Callout>Trading activity is never guaranteed. The percentages in this guide describe shares of <em>fees received by Rovo</em> under the normal route. They are not a share of every trade and do not promise income.</Callout> */}
         </Section>
 
         <Section id="self-rove" eyebrow="02 / Use Rovo" title="Launch yourself">
           <ol className="list-decimal space-y-2 pl-5">
-            <li>Open <Link href="/launch" className="text-[#ccff00] underline">Launch</Link> and choose <strong className="text-white">Self-Rove</strong>.</li>
+            <li>Open <Link href="/launch" className="text-[#ccff00] underline">Launch</Link> and choose <strong className="text-white">Your X profile</strong>.</li>
             <li>Log in, connect a wallet, and verify the X profile you own.</li>
             <li>Choose the token details and trading pair. Set the creator tax within the range shown by the launch form.</li>
             <li>Review the Pons launch fee and any optional first buy, then confirm the transaction in your wallet.</li>
@@ -104,8 +104,8 @@ export default function DocsPage() {
 
         <Section id="scout" eyebrow="03 / Use Rovo" title="Scout a profile">
           <ol className="list-decimal space-y-2 pl-5">
-            <li>Open <Link href="/launch" className="text-[#ccff00] underline">Launch</Link> and choose <strong className="text-white">Scout</strong>.</li>
-            <li>Log in, connect a wallet, and link your X account.</li>
+            <li>Open <Link href="/launch" className="text-[#ccff00] underline">Launch</Link> and choose <strong className="text-white">Another creator</strong>.</li>
+            <li>Log in and connect a wallet. Your own X account is not required.</li>
             <li>Search for the X profile you want to scout and select the correct account.</li>
             <li>Choose the token details and trading pair, review the launch fee and optional first buy, then confirm in your wallet.</li>
           </ol>

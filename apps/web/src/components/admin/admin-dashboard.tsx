@@ -174,17 +174,15 @@ export function AdminDashboard() {
   }
 
   async function confirmRoute() {
-    if (!pendingRoute || !activeToken || !canRoute || !actions) return;
+    if (pendingRoute !== "treasury" || !activeToken || !canRoute || !actions) return;
     const route = pendingRoute;
     setPendingRoute(null);
     setBusy(true);
     setSuccess(null);
     try {
-      const receipt: TransactionReceipt = route === "splitter"
-        ? await actions.harvest(activeToken)
-        : await actions.collectToTreasury(activeToken);
+      const receipt: TransactionReceipt = await actions.collectToTreasury(activeToken);
       setSuccess({ hash: receipt.transactionHash, route });
-      toast.success(route === "splitter" ? "Fees released to the splitter." : "Fees sent to treasury.");
+      toast.success("Fees sent to treasury.");
       await queryClient.invalidateQueries({ queryKey: ["rovo"] });
     } catch (cause) {
       toast.walletError(cause, "The transaction could not be completed.");
@@ -371,8 +369,8 @@ export function AdminDashboard() {
                   <div className="mt-6 grid gap-3 sm:grid-cols-2">
                     <div className="flex flex-col rounded-xl border border-[#424242] bg-[#202020] p-4">
                       <h3 className="font-semibold">Split through Rovo</h3>
-                      <p className={`mt-2 flex-1 text-sm leading-5 ${muted}`}>Claim the current fees and distribute them under the fee splitter’s on-chain rules.</p>
-                      <button type="button" disabled={!canRoute} onClick={() => setPendingRoute("splitter")} className="mt-5 rounded-xl bg-[#ccff00] px-4 py-3 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-40">Release to splitter</button>
+                      <p className={`mt-2 flex-1 text-sm leading-5 ${muted}`}>The splitter route is off. Claim fees with Send to treasury.</p>
+                      <button type="button" disabled className="mt-5 rounded-xl bg-[#ccff00] px-4 py-3 text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-40">Release to splitter</button>
                     </div>
                     <div className="flex flex-col rounded-xl border border-[#424242] bg-[#202020] p-4">
                       <h3 className="font-semibold">Send to treasury</h3>

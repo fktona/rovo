@@ -134,6 +134,9 @@ export function buildServer(deps: {
           imageUrl: profile.imageUrl,
           followers: profile.followers ?? null,
           verified: profile.verified === true,
+          description: profile.description ?? null,
+          bannerUrl: profile.bannerUrl ?? null,
+          website: profile.website ?? null,
         })),
       };
     } catch {
@@ -154,6 +157,9 @@ export function buildServer(deps: {
         imageUrl: profile.imageUrl,
         followers: profile.followers ?? null,
         verified: profile.verified === true,
+        description: profile.description ?? null,
+        bannerUrl: profile.bannerUrl ?? null,
+        website: profile.website ?? null,
       };
     } catch {
       return reply.code(404).send({ error: "x profile not found" });

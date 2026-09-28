@@ -13,7 +13,7 @@ export type LaunchView = {
   xUserId: string;
   pairToken: Address;
   feeCollector: Address;
-  launchType: "scout" | "self";
+  launchType: "scout" | "self" | "meme";
   rover: Address | null;
   scout: ScoutProfile | null;
   claimed: boolean;
@@ -72,6 +72,9 @@ export type PublicXProfile = {
   imageUrl: string | null;
   followers?: number | null;
   verified?: boolean;
+  description?: string | null;
+  bannerUrl?: string | null;
+  website?: string | null;
 };
 
 export interface PublicXProfileResolver {

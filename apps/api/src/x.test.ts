@@ -25,6 +25,9 @@ describe("XApiProfileResolver", () => {
       imageUrl: "https://example.com/a.png",
       followers: 1200,
       verified: false,
+      description: null,
+      bannerUrl: null,
+      website: null,
     });
   });
 
@@ -60,6 +63,9 @@ describe("XApiProfileResolver", () => {
         imageUrl: "https://example.com/b.png",
         followers: 40,
         verified: true,
+        description: null,
+        bannerUrl: null,
+        website: null,
       },
     ]);
   });

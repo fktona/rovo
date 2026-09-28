@@ -35,7 +35,13 @@ async function dexscreenerMarket(token: string) {
   const stats = dexscreenerStats(Array.isArray(body) ? body : [], token);
   return stats == null
     ? { available: false }
-    : { available: true, marketCapUsd: stats.marketCap, priceUsd: stats.priceUsd };
+    : {
+        available: true,
+        marketCapUsd: stats.marketCap,
+        priceUsd: stats.priceUsd,
+        liquidityUsd: stats.liquidityUsd,
+        volume24hUsd: stats.volume24hUsd,
+      };
 }
 
 const erc20Abi = parseAbi([
@@ -164,7 +170,14 @@ export async function GET(
       const priceUsd =
         spot == null ? null : quoteAmountUsd(spot, quoteDecimals, quoteUsd);
       if (marketCapUsd != null) {
-        return Response.json({ available: true, marketCapUsd, priceUsd, phase });
+        const liquidityUsd = quoteAmountUsd(reserves[0], quoteDecimals, quoteUsd);
+        return Response.json({
+          available: true,
+          marketCapUsd,
+          priceUsd,
+          liquidityUsd,
+          phase,
+        });
       }
     }
 

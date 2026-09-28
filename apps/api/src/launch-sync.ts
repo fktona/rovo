@@ -90,9 +90,10 @@ export function receiptLaunchesPonsToken(
   return touchesToken && touchesFactory;
 }
 
-/** High bit keeps a stand-in id out of the X snowflake range. */
+/** Negative stand-in. Real X snowflakes are non-negative and fit in a signed bigint. */
 export function syntheticXUserId(token: Address) {
-  return (BigInt(token) & ((1n << 63n) - 1n)) | (1n << 63n);
+  const positive = BigInt(token) & ((1n << 63n) - 1n);
+  return -(positive === 0n ? 1n : positive);
 }
 
 function readableHandle(candidate: string | null | undefined) {
@@ -334,7 +335,7 @@ async function persistPonsLaunch(input: {
         ponsMemeHook: pons.memeHook.toLowerCase(),
         xUserId,
         handle,
-        type: "self",
+        type: "meme",
         rover: null,
         creator: creator === zeroAddress ? null : creator.toLowerCase(),
         creatorTaxBps: Number(launched.creatorTaxBps),
