@@ -15,7 +15,7 @@ Start only local Postgres and Redis with `docker compose up -d`. Compose publish
 
 - First login redirects to `/onboarding` when X is not linked. The user can link and verify X or skip. Skip is stored for that Privy user in the browser. Self-Rove still requires a linked X account; Scout does not.
 - Home lists indexed launches from `GET /v1/launches`. Market cap, price and volume are deliberately not fabricated while market-data indexing is absent.
-- Launch checks profile uniqueness and Pons pair approval on-chain, gets an API attestation, and submits the wrapper transaction. It accepts a Pons launch configuration ID and a 1–5% Self-Rove creator tax. A first buy is not silently included.
+- Launch creates the token on Raydium Launchpad with the Raydium SDK and a Solana wallet. It does not call the Rovo or Pons contracts. The quote asset is a Solana mint. An optional first buy is paid in SOL; a non-SOL quote is swapped from SOL on Raydium CLMM before the launch transaction. See `docs/solana-visual-design.md`.
 - `/token/[address]` reads the indexed launch and on-chain state. Direct-pair buys require a user-supplied minimum token output and an ERC-20 approval when applicable. Reward proofs, Nottingham claims and admin fee-routing actions use the existing contract helpers. Sell and price quotes are not yet exposed.
 - The old `/token/zora` mock route redirects home so its invented chart and prices are not mistaken for live data.
 

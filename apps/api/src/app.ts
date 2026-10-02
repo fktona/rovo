@@ -31,6 +31,8 @@ export function buildServer(deps: {
     accessToken: string;
     refreshToken: string;
   }) => Promise<{ expiresAt: string }>;
+  getRovoToken?: () => Promise<Address | null>;
+  setRovoToken?: (address: Address) => Promise<void>;
   recordLaunch?: (input: {
     token: Address;
     transactionHash: `0x${string}`;
@@ -192,6 +194,31 @@ export function buildServer(deps: {
     return {
       claims: await deps.repository.getRewardClaims(token.data, account.data),
     };
+  });
+
+  app.get("/v1/rovo-token", async () => ({
+    address: (await deps.getRovoToken?.()) ?? null,
+  }));
+
+  app.post("/v1/admin/rovo-token", async (request, reply) => {
+    if (!deps.authorizeAdmin || !deps.setRovoToken) {
+      return reply.code(503).send({ error: "rovo token update unavailable" });
+    }
+    const auth = request.headers.authorization;
+    if (!auth?.startsWith("Bearer ")) {
+      return reply.code(401).send({ error: "missing Privy access token" });
+    }
+    const body = z
+      .object({ wallet: addressSchema, address: addressSchema })
+      .safeParse(request.body);
+    if (!body.success) return reply.code(400).send({ error: "invalid rovo token" });
+    try {
+      await deps.authorizeAdmin(auth.slice(7), body.data.wallet);
+    } catch {
+      return reply.code(403).send({ error: "admin access required" });
+    }
+    await deps.setRovoToken(body.data.address);
+    return { updated: true, address: body.data.address };
   });
 
   app.post("/v1/admin/x-tokens", async (request, reply) => {

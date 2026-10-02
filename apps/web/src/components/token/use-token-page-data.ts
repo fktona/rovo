@@ -65,6 +65,56 @@ function scoutProfile(
   return launch.scout;
 }
 
+function isSolanaAddress(value: string) {
+  return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value);
+}
+
+function tokenImage(value: string | undefined) {
+  if (!value) return "/figma-token/zora.png";
+  if (value.startsWith("ipfs://")) {
+    return `https://ipfs.io/ipfs/${value.slice("ipfs://".length)}`;
+  }
+  return value;
+}
+
+type RaydiumHolder = {
+  owner: string;
+  percentage: number;
+  label?: string;
+};
+
+type RaydiumDetail = {
+  token: {
+    name?: string;
+    symbol?: string;
+    imgUrl?: string;
+    poolId?: string;
+    supply?: number;
+    marketCap?: number;
+    finishingRate?: number;
+    migrateAmmId?: string;
+    volumeU?: number;
+    mintB?: { symbol?: string; logoURI?: string };
+  };
+  market: {
+    usdPrice: number | null;
+    pairedUsdPrice: number | null;
+  };
+  holders: {
+    count: number | null;
+    holders: RaydiumHolder[];
+  };
+};
+
+type RaydiumTrade = {
+  signature: string;
+  time: number | null;
+  trader: string;
+  side: "buy" | "sell";
+  tokenAmount: number;
+  pairedAmount: number;
+};
+
 function shortAddress(value: string) {
   return value.length < 10 ? value : `${value.slice(0, 6)}…${value.slice(-4)}`;
 }
@@ -87,8 +137,9 @@ const erc20NameAbi = parseAbi([
 ]);
 
 export function useTokenPageData(token: string, range: ChartRange) {
-  const valid = isAddress(token);
-  const address = valid ? (token as Address) : undefined;
+  const evm = isAddress(token);
+  const solana = !evm && isSolanaAddress(token);
+  const address = evm ? (token as Address) : undefined;
   const { publicClient } = useRovoContext();
   const launch = useLaunch(address);
   const metadata = useQuery({
@@ -144,6 +195,23 @@ export function useTokenPageData(token: string, range: ChartRange) {
     queryFn: () =>
       readJson<{ holders?: Holder[]; holdersCount?: number }>(
         `/api/pons-market/${address}/holders`,
+      ),
+  });
+
+  const raydium = useQuery({
+    queryKey: ["rovo", "raydium-token", token],
+    enabled: solana,
+    refetchInterval: 15_000,
+    queryFn: () => readJson<RaydiumDetail>(`/api/raydium/token/${encodeURIComponent(token)}`),
+  });
+  const poolId = raydium.data?.token.poolId;
+  const raydiumTrades = useQuery({
+    queryKey: ["rovo", "raydium-trades", poolId],
+    enabled: solana && !!poolId,
+    refetchInterval: 15_000,
+    queryFn: () =>
+      readJson<{ trades?: RaydiumTrade[] }>(
+        `/api/raydium/trades?poolId=${encodeURIComponent(poolId ?? "")}`,
       ),
   });
 
@@ -206,8 +274,72 @@ export function useTokenPageData(token: string, range: ChartRange) {
   const quoteDecimals = fees.data?.quoteAsset?.decimals ?? 18;
   const quoteScale = 10 ** quoteDecimals;
 
+  if (solana) {
+    const info = raydium.data?.token;
+    const market = raydium.data?.market;
+    const priceUsd = market?.usdPrice ?? null;
+    const marketCapUsd =
+      typeof info?.marketCap === "number" ? info.marketCap : null;
+    const pairedUsd = market?.pairedUsdPrice ?? null;
+    const quoteSymbol = info?.mintB?.symbol || "quote";
+    const graduated =
+      Boolean(info?.migrateAmmId) || (info?.finishingRate ?? 0) >= 1;
+    const volume =
+      typeof info?.volumeU === "number" ? info.volumeU : null;
+    return {
+      valid: true,
+      name: info?.name || info?.symbol || "Token",
+      handle: info?.symbol || "",
+      image: tokenImage(info?.imgUrl),
+      scout: null,
+      pairLabel: quoteSymbol,
+      pairIcon: info?.mintB?.logoURI,
+      status: raydium.isPending ? null : graduated ? "Graduated" : "Bonding",
+      priceLabel: priceUsd == null ? "—" : formatPriceUsd(priceUsd),
+      marketCapLabel: marketCapUsd == null ? "—" : formatUsd(marketCapUsd),
+      volumeLabel: volume == null ? "—" : formatUsd(volume),
+      changeLabel: "—",
+      changeUp: true,
+      creatorEarnings: "—",
+      holderEarnings: "—",
+      feeParts: [],
+      feesLoading: false,
+      points: [],
+      chartLoading: false,
+      quoteUsd: pairedUsd,
+      supply: typeof info?.supply === "number" ? info.supply : null,
+      trades: (raydiumTrades.data?.trades ?? []).slice(0, 20).map((trade) => ({
+        id: trade.signature,
+        time: typeof trade.time === "number" ? relativeTime(trade.time) : "—",
+        side: trade.side === "sell" ? "Sell" : "Buy",
+        usd:
+          pairedUsd == null ? "—" : formatUsd(trade.pairedAmount * pairedUsd),
+        quote: `${trade.pairedAmount.toLocaleString("en-US", { maximumFractionDigits: 4 })} ${quoteSymbol}`,
+        mcap:
+          pairedUsd == null || trade.tokenAmount <= 0 || !info?.supply
+            ? "—"
+            : formatUsd(
+                (trade.pairedAmount / trade.tokenAmount) * info.supply * pairedUsd,
+              ),
+        wallet: shortAddress(trade.trader),
+        tx: `https://solscan.io/tx/${trade.signature}`,
+      })),
+      tradesLoading: raydium.isPending || raydiumTrades.isPending,
+      holders: (raydium.data?.holders.holders ?? []).slice(0, 20).map((holder, index) => ({
+        rank: index + 1,
+        wallet: holder.label
+          ? `${shortAddress(holder.owner)} · ${holder.label}`
+          : shortAddress(holder.owner),
+        share: `${holder.percentage.toFixed(2)}%`,
+        href: `https://solscan.io/account/${holder.owner}`,
+      })),
+      holdersCount: raydium.data?.holders.count ?? null,
+      holdersLoading: raydium.isPending,
+    };
+  }
+
   return {
-    valid,
+    valid: evm,
     name: launch.data?.displayName || metadata.data?.name || launch.data?.handle || "Token",
     handle: launch.data?.handle || metadata.data?.symbol || "",
     image: launch.data?.imageUrl || "/figma-token/zora.png",

@@ -57,7 +57,7 @@ export function TokenPriceChart({
   const values = chartSeries(points, quoteUsd, supply);
   if (values.length === 0) {
     return (
-      <p className="flex h-[340px] items-center justify-center text-sm text-[#737373]">
+      <p className="flex h-[340px] items-center justify-center text-sm text-muted">
         No trades in this range yet.
       </p>
     );
@@ -129,10 +129,10 @@ export function TokenPriceChart({
   return (
     <div>
       <div className="mb-3">
-        <p className="text-[32px] font-semibold leading-none tracking-tight text-white">
+        <p className="text-[32px] font-semibold leading-none tracking-tight text-foreground">
           {formatUsd(active.value)}
         </p>
-        <p className="mt-1.5 text-sm text-[#5dff6a]">
+        <p className="mt-1.5 text-sm text-positive">
           {typeof active.t === "number" ? formatHoverDate(active.t) : "—"}
         </p>
       </div>
@@ -152,9 +152,9 @@ export function TokenPriceChart({
             >
               <defs>
                 <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#b6e24a" stopOpacity="0.55" />
-                  <stop offset="55%" stopColor="#5c6b22" stopOpacity="0.28" />
-                  <stop offset="100%" stopColor="#191919" stopOpacity="0" />
+                  <stop offset="0%" stopColor="var(--accent)" stopOpacity="0.55" />
+                  <stop offset="55%" stopColor="#14f195" stopOpacity="0.28" />
+                  <stop offset="100%" stopColor="var(--surface)" stopOpacity="0" />
                 </linearGradient>
               </defs>
               {[0.22, 0.44, 0.66, 0.88].map((ratio) => (
@@ -164,7 +164,7 @@ export function TokenPriceChart({
                   x2={width}
                   y1={height * ratio}
                   y2={height * ratio}
-                  stroke="#4a4a4a"
+                  stroke="var(--line)"
                   strokeDasharray="1.2 6"
                   strokeWidth="1"
                   vectorEffect="non-scaling-stroke"
@@ -177,7 +177,7 @@ export function TokenPriceChart({
                   x2={width}
                   y1={first.y}
                   y2={first.y}
-                  stroke="#d6ff4a"
+                  stroke="var(--accent)"
                   strokeWidth="2"
                   vectorEffect="non-scaling-stroke"
                 />
@@ -185,7 +185,7 @@ export function TokenPriceChart({
                 <polyline
                   points={line}
                   fill="none"
-                  stroke="#d6ff4a"
+                  stroke="var(--accent)"
                   strokeWidth="2"
                   strokeLinejoin="round"
                   strokeLinecap="round"
@@ -195,17 +195,17 @@ export function TokenPriceChart({
             </svg>
             {hover != null && (
               <span
-                className="pointer-events-none absolute top-0 h-full w-px bg-white/35"
+                className="pointer-events-none absolute top-0 h-full w-px bg-foreground/35"
                 style={{ left: `${(active.x / width) * 100}%` }}
               />
             )}
             <span
-              className="pointer-events-none absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#d6ff4a] shadow-[0_0_0_4px_rgba(214,255,74,0.18)]"
+              className="pointer-events-none absolute size-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-action shadow-[0_0_0_4px_rgba(153,69,255,0.18)]"
               style={{ left: `${(active.x / width) * 100}%`, top: `${(active.y / height) * 100}%` }}
             />
             {hover != null && (
               <div
-                className="pointer-events-none absolute z-20 w-[132px] rounded-lg border border-white/10 bg-[#2a2a2a] px-3 py-2 shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+                className="pointer-events-none absolute z-20 w-[132px] rounded-lg border border-foreground/10 bg-surface-raised px-3 py-2 shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
                 style={{
                   left: tooltipLeft
                     ? `calc(${(active.x / width) * 100}% - 144px)`
@@ -213,23 +213,23 @@ export function TokenPriceChart({
                   top: `max(8px, calc(${(active.y / height) * 100}% - 28px))`,
                 }}
               >
-                <p className="text-[11px] text-[#9a9a9a]">Market cap</p>
-                <p className="mt-0.5 text-sm font-semibold text-white">{formatUsd(active.value)}</p>
-                <p className="mt-0.5 text-[11px] text-[#8a8a8a]">
+                <p className="text-[11px] text-muted">Market cap</p>
+                <p className="mt-0.5 text-sm font-semibold text-foreground">{formatUsd(active.value)}</p>
+                <p className="mt-0.5 text-[11px] text-muted">
                   {typeof active.t === "number" ? formatHoverDate(active.t) : "—"}
                 </p>
               </div>
             )}
           </div>
           {ticks.length > 0 && (
-            <div className="mt-2 flex justify-between px-1 text-[11px] text-[#8a8a8a]">
+            <div className="mt-2 flex justify-between px-1 text-[11px] text-muted">
               {ticks.map((tick) => (
                 <span key={tick}>{formatTick(tick, spanSeconds)}</span>
               ))}
             </div>
           )}
         </div>
-        <div className="relative h-[248px] w-14 shrink-0 text-[11px] text-[#8a8a8a]">
+        <div className="relative h-[248px] w-14 shrink-0 text-[11px] text-muted">
           {yTicks.map((tick) => (
             <span
               key={tick.y}

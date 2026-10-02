@@ -48,43 +48,43 @@ export default function OnboardingPage() {
   };
 
   return (
-    <main className="mx-auto flex min-h-full w-full max-w-5xl items-start px-4 py-6 text-white sm:px-6 md:items-center md:justify-center md:py-10">
-      <section className="w-full max-w-2xl overflow-hidden rounded-[24px] border border-[#343434] bg-[#191919]">
-        <div className="md:border-b md:border-[#343434] md:px-9 md:py-5">
+    <main className="mx-auto flex min-h-full w-full max-w-5xl items-start px-4 py-4 text-foreground sm:px-6 md:items-center md:justify-center md:py-10">
+      <section className="w-full max-w-2xl overflow-hidden rounded-[24px] border border-line bg-surface">
+        <div className="border-b border-line px-5 py-4 md:px-9 md:py-5">
           <div className="flex items-center gap-3">
             <AssetIcon src={icons.logoMark} alt="" width={36} height={36} />
-            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-[#ccff00]">
+            <span className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">
               Welcome to Rovo
             </span>
           </div>
         </div>
-        <div className="py-6 md:px-9 md:py-12">
-          <span className="inline-flex rounded-full border border-[#4d5c1a] bg-[#262d12] px-3 py-1 text-xs font-semibold text-[#ccff00]">
+        <div className="px-5 py-6 md:px-9 md:py-12">
+          <span className="inline-flex rounded-full border border-accent-border bg-accent-soft px-3 py-1 text-xs font-semibold text-accent">
             01 / Make it yours
           </span>
           <h1 className="mt-5 max-w-lg text-3xl font-bold leading-tight tracking-tight sm:text-4xl">
             Connect your X profile.
           </h1>
-          <p className="mt-4 max-w-xl text-base leading-relaxed text-[#aaa]">
+          <p className="mt-4 max-w-xl text-base leading-relaxed text-muted">
             Linking X proves which profile belongs to you. It lets you launch
             your own token, scout a profile, and later claim a token someone
             scouted for you. You can explore Rovo without linking now.
           </p>
-          <div className="mt-8 border-y border-[#2a2a2a] py-4 md:rounded-2xl md:border md:border-[#3a3a3a] md:bg-[#222] md:p-5">
+          <div className="mt-8 rounded-2xl border border-line bg-surface-raised p-4 md:p-5">
             <div className="flex items-start gap-4">
-              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-[#191919] md:bg-black">
+              <span className="flex size-11 shrink-0 items-center justify-center rounded-xl bg-surface md:bg-canvas">
                 <AssetIcon src={icons.x} width={20} height={20} />
               </span>
               <div className="min-w-0 flex-1">
                 <h2 className="text-lg font-semibold">Your X account</h2>
-                <p className="mt-1 text-sm text-[#999]">
+                <p className="mt-1 text-sm text-muted">
                   {identity.xAccount
                     ? `Connected as @${identity.xAccount.username}`
                     : "No X account connected yet"}
                 </p>
               </div>
               {identity.xAccount && (
-                <span className="text-sm font-semibold text-[#ccff00]">
+                <span className="text-sm font-semibold text-accent">
                   Linked ✓
                 </span>
               )}
@@ -96,7 +96,7 @@ export default function OnboardingPage() {
                 type="button"
                 disabled={busy || !identity.ready}
                 onClick={linkX}
-                className="min-h-12 flex-1 rounded-xl bg-[#ccff00] px-5 font-semibold text-black disabled:opacity-50"
+                className="min-h-12 flex-1 rounded-xl bg-action px-5 font-semibold text-ink disabled:opacity-50"
               >
                 {busy ? "Connecting…" : "Link X account"}
               </button>
@@ -105,7 +105,7 @@ export default function OnboardingPage() {
                 type="button"
                 disabled={busy}
                 onClick={verify}
-                className="min-h-12 flex-1 rounded-xl bg-[#ccff00] px-5 font-semibold text-black disabled:opacity-50"
+                className="min-h-12 flex-1 rounded-xl bg-action px-5 font-semibold text-ink disabled:opacity-50"
               >
                 {busy
                   ? "Verifying…"
@@ -117,7 +117,7 @@ export default function OnboardingPage() {
               <button
                 type="button"
                 onClick={continueToApp}
-                className="min-h-12 flex-1 rounded-xl bg-[#ccff00] px-5 font-semibold text-black"
+                className="min-h-12 flex-1 rounded-xl bg-action px-5 font-semibold text-ink"
               >
                 Continue to Rovo
               </button>
@@ -125,12 +125,12 @@ export default function OnboardingPage() {
             <button
               type="button"
               onClick={continueToApp}
-              className="min-h-12 rounded-xl border border-[#555] px-6 font-medium text-[#bbb] hover:text-white"
+              className="min-h-12 rounded-xl border border-line px-6 font-medium text-muted hover:text-foreground"
             >
               {identity.xAccount ? "Do this later" : "Skip for now"}
             </button>
           </div>
-          <p className="mt-5 text-xs text-[#777]">
+          <p className="mt-5 text-xs text-muted">
             Launching your own profile token or scouting one will require a
             linked X account even if you skip this step.
           </p>

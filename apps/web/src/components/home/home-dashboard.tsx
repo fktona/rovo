@@ -33,7 +33,7 @@ function PairIcon({ pair }: { pair: Pair }) {
     return (
       <span
         aria-hidden
-        className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-[#383838] text-[10px] font-semibold text-white"
+        className="flex size-[22px] shrink-0 items-center justify-center rounded-full bg-surface-raised text-[10px] font-semibold text-foreground"
       >
         {pair.label.slice(0, 1)}
       </span>
@@ -117,13 +117,13 @@ function PairFilters({
           aria-expanded={open}
           aria-haspopup="listbox"
           onClick={() => setOpen((value) => !value)}
-          className="inline-flex h-11 items-center gap-1 border-r border-[#383838] pr-3 text-base font-medium md:border-0 md:pr-0"
+          className="inline-flex h-11 items-center gap-1 border-r border-line pr-3 text-base font-medium md:border-0 md:pr-0"
         >
           All
           <AssetIcon src={icons.caret} width={16} height={16} />
         </button>
         {open && (
-          <div className="absolute left-0 top-full z-30 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-[#383838] bg-[#111] p-2 shadow-xl">
+          <div className="absolute left-0 top-full z-30 mt-2 w-[min(20rem,calc(100vw-2rem))] rounded-xl border border-line bg-surface p-2 shadow-xl">
             <label className="sr-only" htmlFor={searchId}>
               Search pair tokens
             </label>
@@ -133,7 +133,7 @@ function PairFilters({
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               placeholder="Search pair tokens"
-              className="h-10 w-full rounded-[10px] bg-[#191919] px-3 text-sm text-white outline-none placeholder:text-[#7f7f7f]"
+              className="h-10 w-full rounded-[10px] bg-surface px-3 text-sm text-foreground outline-none placeholder:text-muted"
             />
             <ul
               role="listbox"
@@ -146,7 +146,7 @@ function PairFilters({
                   role="option"
                   aria-selected={selected === "" || selected === "Creators"}
                   onClick={() => choose("Creators")}
-                  className={`flex w-full items-center rounded-lg px-2 py-2 text-left text-sm ${selected === "" || selected === "Creators" ? "bg-[#191919] text-[#ccff00]" : "hover:bg-[#191919]"}`}
+                  className={`flex w-full items-center rounded-lg px-2 py-2 text-left text-sm ${selected === "" || selected === "Creators" ? "bg-surface text-accent" : "hover:bg-surface"}`}
                 >
                   All pairs
                 </button>
@@ -158,20 +158,20 @@ function PairFilters({
                     role="option"
                     aria-selected={selected === choice.symbol}
                     onClick={() => choose(choice.symbol)}
-                    className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm ${selected === choice.symbol ? "bg-[#191919] text-[#ccff00]" : "hover:bg-[#191919]"}`}
+                    className={`flex w-full items-center gap-2 rounded-lg px-2 py-2 text-left text-sm ${selected === choice.symbol ? "bg-surface text-accent" : "hover:bg-surface"}`}
                   >
                     <PairIcon
                       pair={{ label: choice.symbol, icon: choice.iconUrl }}
                     />
                     <span className="font-medium">{choice.symbol}</span>
-                    <span className="truncate text-[#737373]">
+                    <span className="truncate text-muted">
                       {choice.name}
                     </span>
                   </button>
                 </li>
               ))}
               {matches.length === 0 && (
-                <li className="px-2 py-3 text-sm text-[#737373]">
+                <li className="px-2 py-3 text-sm text-muted">
                   No pair tokens match.
                 </li>
               )}
@@ -189,7 +189,7 @@ function PairFilters({
             type="button"
             aria-pressed={selected === pair.label}
             onClick={() => onSelect(selected === pair.label ? "" : pair.label)}
-            className={`flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2 text-sm ${selected === pair.label ? "bg-[#202020] text-[#ccff00]" : "text-white/80"}`}
+            className={`flex h-11 shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full px-2 text-sm ${selected === pair.label ? "bg-surface-raised text-accent" : "text-foreground/80"}`}
           >
             <PairIcon pair={pair} />
             {pair.label}
@@ -456,13 +456,13 @@ function EmptyTokens({
 }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-6 py-16 text-center">
-      <span className="flex size-16 items-center justify-center rounded-2xl border border-[#383838] bg-[#191919] [&_img]:size-8">
+      <span className="flex size-16 items-center justify-center rounded-2xl border border-line bg-surface [&_img]:size-8">
         <AssetIcon src={icons.logoMark} width={32} height={32} />
       </span>
-      <h2 className="mt-5 text-lg font-semibold text-white">
+      <h2 className="mt-5 text-lg font-semibold text-foreground">
         {filtered ? "No tokens match" : "No tokens yet"}
       </h2>
-      <p className="mt-2 max-w-sm text-sm leading-6 text-[#737373]">
+      <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
         {filtered
           ? "Nothing in this view matches your search or filters."
           : "Profile tokens launched on Rovo will show up here."}
@@ -471,14 +471,14 @@ function EmptyTokens({
         <button
           type="button"
           onClick={onClear}
-          className="mt-6 rounded-[10px] border border-[#383838] bg-[#191919] px-4 py-2 text-sm font-medium text-white hover:border-[#ccff00] hover:text-[#ccff00]"
+          className="mt-6 rounded-[10px] border border-line bg-surface px-4 py-2 text-sm font-medium text-foreground hover:border-accent hover:text-accent"
         >
           Clear filters
         </button>
       ) : (
         <Link
           href="/launch"
-          className="mt-6 rounded-[10px] bg-[#ccff00] px-4 py-2 text-sm font-medium text-black hover:bg-[#d8ff43]"
+          className="mt-6 rounded-[10px] bg-action px-4 py-2 text-sm font-medium text-ink hover:bg-action-hover"
         >
           Launch a token
         </Link>
@@ -507,13 +507,13 @@ function MobileHome({
   loading: boolean;
 }) {
   return (
-    <main className="min-h-full bg-black px-4 pb-8 text-white md:hidden">
+    <main className="min-h-full bg-canvas px-4 pb-8 text-foreground md:hidden">
       <div className="flex items-center gap-3 pt-6">
         <PairFilters selected={selectedPair} onSelect={onPairSelect} />
         <Link
           href="/launch"
           aria-label="Launch a token"
-          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-[#ccff00] text-3xl font-light leading-none text-black"
+          className="flex size-11 shrink-0 items-center justify-center rounded-full bg-action text-3xl font-light leading-none text-ink"
         >
           +
         </Link>
@@ -529,7 +529,7 @@ function MobileHome({
           Array.from({ length: 4 }, (_, index) => (
             <div
               key={index}
-              className="flex min-h-[86px] items-center gap-3 border-b border-[#252525] py-3"
+              className="flex min-h-[86px] items-center gap-3 border-b border-line py-3"
               aria-hidden
             >
               <span className="shimmer size-[54px] shrink-0 rounded-xl" />
@@ -547,7 +547,7 @@ function MobileHome({
           <Link
             key={token.id}
             href={`/token/${token.id}`}
-            className="flex min-h-[86px] items-center gap-3 border-b border-[#252525] py-3"
+            className="flex min-h-[86px] items-center gap-3 border-b border-line py-3"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -562,20 +562,20 @@ function MobileHome({
               <strong className="block truncate text-base leading-tight">
                 {token.name}
               </strong>
-              <span className="mt-1 block truncate text-sm text-[#888]">
+              <span className="mt-1 block truncate text-sm text-muted">
                 {token.symbol}
               </span>
             </div>
             <div className="shrink-0 text-right">
               <MetricValue
                 value={token.marketCap}
-                className="block text-base leading-tight text-[#ccff00]"
+                className="block text-base leading-tight text-accent"
               />
-              <span className="mt-1 block text-sm font-medium text-[#888]">
+              <span className="mt-1 block text-sm font-medium text-muted">
                 MCAP
               </span>
               <MetricValue value={token.price} className="mt-1 block text-sm leading-tight" />
-              <span className="block text-xs font-medium text-[#888]">Price</span>
+              <span className="block text-xs font-medium text-muted">Price</span>
             </div>
           </Link>
         ))}
@@ -709,7 +709,7 @@ export function HomeDashboard() {
   return (
     <div className={styles.dashboard}>
       {launches.isError && (
-        <p role="alert" className="px-4 pt-5 text-sm text-[#ffaaaa]">
+        <p role="alert" className="px-4 pt-5 text-sm text-danger">
           Could not load launches from the Rovo API. Check that the API and
           indexer are running.
         </p>

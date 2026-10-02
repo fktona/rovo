@@ -40,9 +40,9 @@ type ToastApi = {
 const ToastContext = createContext<ToastApi | null>(null);
 
 const toneBar: Record<ToastTone, string> = {
-  success: "bg-[#ccff00]",
-  error: "bg-[#ff5a5a]",
-  info: "bg-[#8d8d8d]",
+  success: "bg-action",
+  error: "bg-danger",
+  info: "bg-surface-raised",
 };
 
 export function ToastProvider({ children }: { children: ReactNode }) {
@@ -145,23 +145,23 @@ function ToastCard({ toast, onDismiss }: { toast: ToastRecord; onDismiss: (id: n
       role={toast.tone === "error" ? "alert" : "status"}
       onMouseEnter={() => controls.current.pause()}
       onMouseLeave={() => controls.current.resume()}
-      className="toast-in pointer-events-auto relative overflow-hidden rounded-2xl border border-[#3a3a3a] bg-[#141414] py-3 pl-4 pr-2 shadow-[0_16px_40px_rgba(0,0,0,0.55)]"
+      className="toast-in pointer-events-auto relative overflow-hidden rounded-2xl border border-line bg-surface py-3 pl-4 pr-2 shadow-[0_16px_40px_rgba(0,0,0,0.55)]"
     >
       <span className={`absolute inset-y-0 left-0 w-1 ${toneBar[toast.tone]}`} aria-hidden="true" />
       <div className="flex items-start gap-3">
-        <p className="min-w-0 flex-1 pt-0.5 text-sm font-medium leading-5 text-white">{toast.title}</p>
+        <p className="min-w-0 flex-1 pt-0.5 text-sm font-medium leading-5 text-foreground">{toast.title}</p>
         <button
           type="button"
           aria-label="Dismiss notification"
           onClick={() => onDismiss(toast.id)}
-          className="grid size-7 shrink-0 place-items-center rounded-lg text-[#9a9a9a] hover:bg-[#242424] hover:text-white"
+          className="grid size-7 shrink-0 place-items-center rounded-lg text-muted hover:bg-surface-raised hover:text-foreground"
         >
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
             <path d="M2 2l8 8M10 2L2 10" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
           </svg>
         </button>
       </div>
-      {toast.description && <p className="mt-1 pr-8 text-xs leading-5 text-[#a3a3a3]">{toast.description}</p>}
+      {toast.description && <p className="mt-1 pr-8 text-xs leading-5 text-muted">{toast.description}</p>}
     </div>
   );
 }

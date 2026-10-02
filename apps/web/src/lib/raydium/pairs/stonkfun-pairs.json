@@ -1,0 +1,51 @@
+[
+  {
+    "ticker": "ANTHROPIC",
+    "name": "ANTHROPIC",
+    "mint": "Pren1FvFX6J3E4kXhJuCiAD5aDmGEb7qJRncwA8Lkhw",
+    "image": "/pairs/stonkfun/Pren1FvFX6J3E4kXhJuCiAD5aDmGEb7qJRncwA8Lkhw.png",
+    "sourceImageUrl": "https://www.stonkfun.xyz/api/asset/quote-logo/Pren1FvFX6J3E4kXhJuCiAD5aDmGEb7qJRncwA8Lkhw?v=aaf04940"
+  },
+  {
+    "ticker": "ANDURIL",
+    "name": "ANDURIL",
+    "mint": "PresTj4Yc2bAR197Er7wz4UUKSfqt6FryBEdAriBoQB",
+    "image": "/pairs/stonkfun/PresTj4Yc2bAR197Er7wz4UUKSfqt6FryBEdAriBoQB.png",
+    "sourceImageUrl": "https://www.stonkfun.xyz/api/asset/quote-logo/PresTj4Yc2bAR197Er7wz4UUKSfqt6FryBEdAriBoQB?v=d1ab3c0e"
+  },
+  {
+    "ticker": "POLYMARKET",
+    "name": "POLYMARKET",
+    "mint": "Pre8AREmFPtoJFT8mQSXQLh56cwJmM7CFDRuoGBZiUP",
+    "image": "/pairs/stonkfun/Pre8AREmFPtoJFT8mQSXQLh56cwJmM7CFDRuoGBZiUP.png",
+    "sourceImageUrl": "https://www.stonkfun.xyz/api/asset/quote-logo/Pre8AREmFPtoJFT8mQSXQLh56cwJmM7CFDRuoGBZiUP?v=128e10fc"
+  },
+  {
+    "ticker": "KALSHI",
+    "name": "KALSHI",
+    "mint": "PreLWGkkeqG1s4HEfFZSy9moCrJ7btsHuUtfcCeoRua",
+    "image": "/pairs/stonkfun/PreLWGkkeqG1s4HEfFZSy9moCrJ7btsHuUtfcCeoRua.jpg",
+    "sourceImageUrl": "https://www.stonkfun.xyz/api/asset/quote-logo/PreLWGkkeqG1s4HEfFZSy9moCrJ7btsHuUtfcCeoRua?v=59b2f6c3"
+  },
+  {
+    "ticker": "NEURALINK",
+    "name": "NEURALINK",
+    "mint": "PrekqLJvJ3qVdXmBGDiexvwUTF4rLFDa6HWS4HJbw9S",
+    "image": "/pairs/stonkfun/PrekqLJvJ3qVdXmBGDiexvwUTF4rLFDa6HWS4HJbw9S.png",
+    "sourceImageUrl": "https://www.stonkfun.xyz/api/asset/quote-logo/PrekqLJvJ3qVdXmBGDiexvwUTF4rLFDa6HWS4HJbw9S?v=6db844d1"
+  },
+  {
+    "ticker": "OPENAI",
+    "name": "OPENAI",
+    "mint": "PreweJYECqtQwBtpxHL171nL2K6umo692gTm7Q3rpgF",
+    "image": "/pairs/stonkfun/PreweJYECqtQwBtpxHL171nL2K6umo692gTm7Q3rpgF.webp",
+    "sourceImageUrl": "https://www.stonkfun.xyz/api/asset/quote-logo/PreweJYECqtQwBtpxHL171nL2K6umo692gTm7Q3rpgF?v=f6dce61d"
+  },
+  {
+    "ticker": "FIGUREAI",
+    "name": "FIGUREAI",
+    "mint": "PreZad18qfPtbxNpMtMuAuX2zVpvkEU8DnJx56faCWd",
+    "image": "/pairs/stonkfun/PreZad18qfPtbxNpMtMuAuX2zVpvkEU8DnJx56faCWd.png",
+    "sourceImageUrl": "https://www.stonkfun.xyz/api/asset/quote-logo/PreZad18qfPtbxNpMtMuAuX2zVpvkEU8DnJx56faCWd?v=01cfaf08"
+  }
+]

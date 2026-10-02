@@ -5,8 +5,12 @@ steps:
       - -f
       - deploy/api.Dockerfile
       - -t
-      - us-central1-docker.pkg.dev/$PROJECT_ID/rovo/api:latest
+      - us-central1-docker.pkg.dev/$PROJECT_ID/rovo/api:$BUILD_ID
       - .
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - us-central1-docker.pkg.dev/$PROJECT_ID/rovo/api:$BUILD_ID
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
@@ -16,8 +20,6 @@ steps:
       - rovo-api
       - --project=$PROJECT_ID
       - --region=us-central1
-      - --image=us-central1-docker.pkg.dev/$PROJECT_ID/rovo/api:latest
-images:
-  - us-central1-docker.pkg.dev/$PROJECT_ID/rovo/api:latest
+      - --image=us-central1-docker.pkg.dev/$PROJECT_ID/rovo/api:$BUILD_ID
 options:
   logging: CLOUD_LOGGING_ONLY

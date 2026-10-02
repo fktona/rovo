@@ -7,10 +7,10 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <main className="mx-auto w-full max-w-2xl px-4 py-10 text-white sm:px-6">
+    <main className="mx-auto w-full max-w-2xl px-4 py-10 text-foreground sm:px-6">
       <h1 className="text-3xl font-bold tracking-tight">Terms of Service</h1>
-      <p className="mt-3 text-sm text-[#8a8a8a]">Last updated 27 September 2026</p>
-      <div className="mt-8 space-y-5 text-[15px] leading-7 text-[#bababa]">
+      <p className="mt-3 text-sm text-muted">Last updated 27 September 2026</p>
+      <div className="mt-8 space-y-5 text-[15px] leading-7 text-muted">
         <p>
           Rovo is an interface for launching and trading tokens on Robinhood
           Chain. Using the app means you submit your own wallet transactions.

@@ -134,6 +134,14 @@ export const xOauthTokens = pgTable("x_oauth_tokens", {
     .defaultNow(),
 });
 
+export const rovoToken = pgTable("rovo_token", {
+  id: integer("id").primaryKey(),
+  address: text("address").notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 export const indexerState = pgTable("indexer_state", {
   chainId: integer("chain_id").primaryKey(),
   finalizedBlock: bigint("finalized_block", { mode: "bigint" }).notNull(),

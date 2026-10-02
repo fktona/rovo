@@ -88,22 +88,22 @@ export function RewardsLive() {
 
   return (
     <main
-      className="mx-auto w-full max-w-3xl px-4 py-6 text-white sm:px-6 sm:py-8"
+      className="mx-auto w-full max-w-3xl px-4 py-6 text-foreground sm:px-6 sm:py-8"
       aria-busy={loading}
     >
       <h1 className="text-[28px] font-bold tracking-[-0.6px] sm:text-3xl">
         Rewards
       </h1>
-      <p className="mt-1 text-sm text-[#8a8a8a]">
+      <p className="mt-1 text-sm text-muted">
         Creator fees from every profile and scout token.
       </p>
-      <p className="mt-3 max-w-xl text-sm leading-6 text-[#8a8a8a]">
+      <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
         During the contract audit, fees Rovo collects go to the X Money wallet
         for manual allocation. Amounts here are estimates. They are not an
         automatic on-chain payout.
       </p>
 
-      <p className="mt-8 text-xs font-medium uppercase tracking-[0.08em] text-[#8a8a8a]">
+      <p className="mt-8 text-xs font-medium uppercase tracking-[0.08em] text-muted">
         Total rewards
       </p>
       {loading ? (
@@ -125,8 +125,8 @@ export function RewardsLive() {
               ),
             )}
           </div>
-          <div className="mt-5 border-t border-[#2a2a2a] pt-4">
-            <p className="text-xs font-medium uppercase tracking-[0.08em] text-[#8a8a8a]">
+          <div className="mt-5 border-t border-line pt-4">
+            <p className="text-xs font-medium uppercase tracking-[0.08em] text-muted">
               Protocol · 50% buyback, 50% burn
             </p>
             <div className="mt-3 grid grid-cols-2 gap-x-6">
@@ -154,11 +154,11 @@ export function RewardsLive() {
           ))}
         </div>
       ) : launches.isError ? (
-        <p role="alert" className="py-6 text-sm text-[#ffaaaa]">
+        <p role="alert" className="py-6 text-sm text-danger">
           Could not load tokens.
         </p>
       ) : rows.length === 0 ? (
-        <p className="py-6 text-sm text-[#8a8a8a]">No tokens yet.</p>
+        <p className="py-6 text-sm text-muted">No tokens yet.</p>
       ) : (
         <div className="divide-y divide-[#2a2a2a]">
           {rows.map(({ launch, buckets, ready }) => (
@@ -196,16 +196,16 @@ function TokenReward({
         <Avatar src={xAvatarUrl(launch.imageUrl)} label={name} />
         <div className="min-w-0 flex-1">
           <p className="truncate font-semibold">{name}</p>
-          <p className="truncate text-sm text-[#8a8a8a]">
+          <p className="truncate text-sm text-muted">
             @{launch.handle}
-            <span className="mx-1.5 text-[#444]">·</span>
-            <span className={profile ? "text-[#ccff00]" : "text-[#4aa3ff]"}>
+            <span className="mx-1.5 text-muted">·</span>
+            <span className={profile ? "text-accent" : "text-[#4aa3ff]"}>
               {profile ? "Profile" : "Scout"}
             </span>
           </p>
         </div>
         {ready ? (
-          <p className="shrink-0 text-sm font-semibold tabular-nums text-[#ccff00]">
+          <p className="shrink-0 text-sm font-semibold tabular-nums text-accent">
             {money(buckets.total)}
           </p>
         ) : (
@@ -220,7 +220,7 @@ function TokenReward({
       {ready ? (
         <>
           <AllocationBar buckets={buckets} className="mt-1" barClassName="h-1.5" />
-          <p className="mt-2 text-xs leading-5 text-[#8a8a8a]">
+          <p className="mt-2 text-xs leading-5 text-muted">
             {parts
               .map((part) => `${part.label} ${shareLabel(buckets[part.key], buckets.total)}`)
               .join(" · ")}
@@ -246,7 +246,7 @@ function RewardsSummarySkeleton() {
           <StatSkeleton key={index} />
         ))}
       </div>
-      <div className="mt-5 border-t border-[#2a2a2a] pt-4">
+      <div className="mt-5 border-t border-line pt-4">
         <span className="shimmer block h-3 w-52 rounded" />
         <div className="mt-3 grid grid-cols-2 gap-x-6">
           <StatSkeleton />
@@ -327,19 +327,19 @@ function AllocationBar({
       {tip && place && (
         <div
           role="tooltip"
-          className="pointer-events-none absolute top-0 z-20 flex w-max items-center gap-1.5 rounded-full border border-white/10 bg-[#2a2a2a] px-2.5 py-1 text-xs shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
+          className="pointer-events-none absolute top-0 z-20 flex w-max items-center gap-1.5 rounded-full border border-foreground/10 bg-surface-raised px-2.5 py-1 text-xs shadow-[0_8px_24px_rgba(0,0,0,0.45)]"
           style={{ left: place.left, transform: place.transform }}
         >
           <span
             className="size-1.5 shrink-0 rounded-full"
             style={{ background: tip.color }}
           />
-          <span className="text-[#c8c8c8]">{tip.label}</span>
-          <span className="font-semibold tabular-nums text-white">{money(tip.amount)}</span>
-          <span className="text-[#8a8a8a]">{shareLabel(tip.amount, buckets.total)}</span>
+          <span className="text-muted">{tip.label}</span>
+          <span className="font-semibold tabular-nums text-foreground">{money(tip.amount)}</span>
+          <span className="text-muted">{shareLabel(tip.amount, buckets.total)}</span>
         </div>
       )}
-      <div className={`flex overflow-hidden rounded-full bg-[#1c1c1c] ${barClassName}`}>
+      <div className={`flex overflow-hidden rounded-full bg-surface ${barClassName}`}>
         {slices.map((part) => (
           <div
             key={part.key}
@@ -388,7 +388,7 @@ function AllocationStat({
 }) {
   return (
     <div>
-      <p className="flex items-center gap-1.5 text-xs text-[#8a8a8a]">
+      <p className="flex items-center gap-1.5 text-xs text-muted">
         <span
           className="inline-block size-2 rounded-full"
           style={{ background: color }}
@@ -396,7 +396,7 @@ function AllocationStat({
         {label}
       </p>
       <p className="mt-1 text-lg font-semibold tabular-nums">{money(amount)}</p>
-      <p className="text-xs text-[#666]">{shareLabel(amount, total)}</p>
+      <p className="text-xs text-muted">{shareLabel(amount, total)}</p>
     </div>
   );
 }
@@ -413,7 +413,7 @@ function Avatar({ src, label }: { src: string | null; label: string }) {
     );
   }
   return (
-    <span className="flex size-12 shrink-0 items-center justify-center rounded-[10px] bg-[#2a2a2a] text-base font-semibold uppercase">
+    <span className="flex size-12 shrink-0 items-center justify-center rounded-[10px] bg-surface-raised text-base font-semibold uppercase">
       {label.replace(/^@/, "").slice(0, 1) || "?"}
     </span>
   );

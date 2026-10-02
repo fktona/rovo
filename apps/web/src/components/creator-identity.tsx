@@ -67,7 +67,7 @@ export function TokenProfileCard({
   };
 
   return (
-    <section className="overflow-hidden rounded-[20px] bg-[#191919]">
+    <section className="overflow-hidden rounded-[20px] bg-surface">
       <div className="relative">
         {profile?.bannerUrl ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -78,7 +78,7 @@ export function TokenProfileCard({
             referrerPolicy="no-referrer"
           />
         ) : (
-          <div className="h-28 w-full bg-[#141414] sm:h-36" />
+          <div className="h-28 w-full bg-surface sm:h-36" />
         )}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
@@ -87,24 +87,24 @@ export function TokenProfileCard({
           width={88}
           height={88}
           referrerPolicy="no-referrer"
-          className="absolute bottom-0 left-5 size-20 translate-y-1/2 rounded-full object-cover ring-4 ring-[#191919] sm:left-7 sm:size-[88px]"
+          className="absolute bottom-0 left-5 size-20 translate-y-1/2 rounded-full object-cover ring-4 ring-surface sm:left-7 sm:size-[88px]"
         />
       </div>
 
       <div className="px-5 pb-6 pt-12 sm:px-7 sm:pt-14">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-2">
-          <h1 className="min-w-0 truncate text-[26px] font-bold leading-none tracking-tight text-white sm:text-[32px]">
+          <h1 className="min-w-0 truncate text-[26px] font-bold leading-none tracking-tight text-foreground sm:text-[32px]">
             {displayName}
           </h1>
           {profile?.verified ? <VerifiedMark /> : null}
           {status ? (
-            <span className="shrink-0 rounded-full bg-[#212121] px-2.5 py-1 text-[11px] font-medium leading-none text-[#9a9a9a]">
+            <span className="shrink-0 rounded-full bg-surface-raised px-2.5 py-1 text-[11px] font-medium leading-none text-muted">
               {status}
             </span>
           ) : null}
         </div>
 
-        <p className="mt-2 text-sm text-[#737373]">
+        <p className="mt-2 text-sm text-muted">
           @{username}
           {profile?.followers != null
             ? ` · ${formatFollowers(profile.followers)} followers`
@@ -112,12 +112,12 @@ export function TokenProfileCard({
         </p>
 
         {profile?.description ? (
-          <p className="mt-3 max-w-2xl text-sm leading-6 text-[#bababa]">
+          <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
             {profile.description}
           </p>
         ) : null}
 
-        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-[#737373]">
+        <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted">
           <span className="inline-flex items-center gap-1.5">
             Paired with
             {pairIcon ? (
@@ -130,12 +130,12 @@ export function TokenProfileCard({
                 className="size-5 rounded-full object-cover"
               />
             ) : null}
-            <span className="font-medium text-white">{pairLabel}</span>
+            <span className="font-medium text-foreground">{pairLabel}</span>
           </span>
           <button
             type="button"
             onClick={copyContract}
-            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#383838] bg-[#141414] px-2.5 text-xs text-white"
+            className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-line bg-surface px-2.5 text-xs text-foreground"
           >
             {copied ? "Copied" : `CA ${shortAddress(token)}`}
           </button>
@@ -152,12 +152,12 @@ export function TokenProfileCard({
           {telegram ? <SocialLink href={telegram} label="Tg" /> : null}
         </div>
 
-        <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-[#383838] pt-5 sm:grid-cols-4">
+        <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 border-t border-line pt-5 sm:grid-cols-4">
           {stats.map((stat) => (
             <div key={stat.label} className="min-w-0">
-              <dt className="text-sm text-[#737373]">{stat.label}</dt>
+              <dt className="text-sm text-muted">{stat.label}</dt>
               <dd
-                className={`mt-1 truncate text-xl font-bold tracking-tight ${stat.tone ?? "text-white"}`}
+                className={`mt-1 truncate text-xl font-bold tracking-tight ${stat.tone ?? "text-foreground"}`}
               >
                 {stat.value}
               </dd>
@@ -199,7 +199,7 @@ export function CreatorIdentity({ handle }: { handle: string }) {
         />
       ) : null}
       {profile.description ? (
-        <p className="max-w-2xl text-sm leading-6 text-[#bababa]">
+        <p className="max-w-2xl text-sm leading-6 text-muted">
           {profile.description}
         </p>
       ) : null}
@@ -220,7 +220,7 @@ function SocialLink({ href, label }: { href: string; label: string }) {
       href={href}
       target="_blank"
       rel="noreferrer"
-      className="inline-flex h-8 items-center rounded-[10px] bg-[#212121] px-3 text-xs font-medium text-white"
+      className="inline-flex h-8 items-center rounded-[10px] bg-surface-raised px-3 text-xs font-medium text-foreground"
     >
       {label}
     </a>

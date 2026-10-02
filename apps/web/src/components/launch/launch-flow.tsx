@@ -17,13 +17,13 @@ type Category = "All" | "xStocks" | "Crypto";
 
 const steps = ["Identity", "Pair", "First Buy", "Review"];
 const card =
-  "w-full max-w-3xl rounded-[20px] bg-[#191919] px-4 py-6 sm:px-8 sm:py-8";
+  "w-full max-w-3xl rounded-[20px] bg-surface px-4 py-6 sm:px-8 sm:py-8";
 const field =
-  "w-full rounded-[8px] border border-[#414141] bg-[#242424] px-4 py-3 text-base text-white outline-none placeholder:text-[#777] focus:border-[#ccff00]";
+  "w-full rounded-[8px] border border-line bg-surface-raised px-4 py-3 text-base text-foreground outline-none placeholder:text-muted focus:border-accent";
 const primary =
-  "flex items-center justify-center rounded-[10px] bg-[#ccff00] px-6 py-3 text-base font-semibold text-black transition hover:bg-[#dfff66] disabled:cursor-not-allowed disabled:opacity-50";
+  "flex items-center justify-center rounded-[10px] bg-action px-6 py-3 text-base font-semibold text-ink transition hover:bg-action-hover disabled:cursor-not-allowed disabled:opacity-50";
 const secondary =
-  "flex items-center justify-center rounded-[8px] border border-[#555] px-6 py-3 text-base font-medium text-white transition hover:border-[#aaa]";
+  "flex items-center justify-center rounded-[8px] border border-line px-6 py-3 text-base font-medium text-foreground transition hover:border-line";
 
 function ModeSwitch({
   mode,
@@ -34,7 +34,7 @@ function ModeSwitch({
 }) {
   return (
     <div
-      className="flex w-full max-w-xs rounded-[5px] bg-[#212121] p-1"
+      className="flex w-full max-w-xs rounded-[5px] bg-surface-raised p-1"
       role="tablist"
       aria-label="Launch type"
     >
@@ -43,7 +43,7 @@ function ModeSwitch({
         role="tab"
         aria-selected={mode === "self"}
         onClick={() => onChange("self")}
-        className={`flex-1 rounded-[5px] px-3 py-2 text-base font-medium ${mode === "self" ? "border border-[#e1ff1f] bg-[#ccff00] text-black" : "bg-[#383838] text-[#9a9a9a]"}`}
+        className={`flex-1 rounded-[5px] px-3 py-2 text-base font-medium ${mode === "self" ? "border border-accent bg-action text-ink" : "bg-surface-raised text-muted"}`}
       >
         Self-Rove
       </button>
@@ -52,7 +52,7 @@ function ModeSwitch({
         role="tab"
         aria-selected={mode === "scout"}
         onClick={() => onChange("scout")}
-        className={`flex-1 rounded-[5px] px-3 py-2 text-base font-medium ${mode === "scout" ? "border border-[#e1ff1f] bg-[#ccff00] text-black" : "bg-[#383838] text-[#9a9a9a]"}`}
+        className={`flex-1 rounded-[5px] px-3 py-2 text-base font-medium ${mode === "scout" ? "border border-accent bg-action text-ink" : "bg-surface-raised text-muted"}`}
       >
         Scout
       </button>
@@ -78,7 +78,7 @@ function Intro({ mode }: { mode: Mode }) {
           </>
         )}
       </h1>
-      <p className="mt-[5px] text-[16px] font-medium tracking-[0.32px] text-[#999]">
+      <p className="mt-[5px] text-[16px] font-medium tracking-[0.32px] text-muted">
         {mode === "self"
           ? "Launch yourself or discover someone before they do."
           : "Launch a public X profile and become its Rover."}
@@ -96,7 +96,7 @@ function StepIndicator({ step }: { step: number }) {
       {steps.map((label, index) => (
         <li
           key={label}
-          className={`whitespace-nowrap text-[14px] ${index + 1 === step ? "text-[#ccff00]" : "text-[#737373]"}`}
+          className={`whitespace-nowrap text-[14px] ${index + 1 === step ? "text-accent" : "text-muted"}`}
         >
           {String(index + 1).padStart(2, "0")} {label}
         </li>
@@ -158,7 +158,7 @@ function ProfileIdentity({
               )
             : "Jules Moreau"}
         </div>
-        <div className="mt-0.5 break-words text-sm text-[#9b9b9b]">
+        <div className="mt-0.5 break-words text-sm text-muted">
           {scout
             ? `${handle || "@elonmusk2"} · ${handle?.toLowerCase() === "@elonmusk2" ? "217.9K followers" : "Profile preview"}`
             : "@jules_trades · 12.5K followers"}
@@ -193,27 +193,27 @@ function AssetPicker({
     <section aria-label="Choose pair asset">
       <p className="text-base">Pair with</p>
       <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="flex flex-wrap items-center gap-2 rounded-[10px] bg-[#191919] p-2">
+        <div className="flex flex-wrap items-center gap-2 rounded-[10px] bg-surface p-2">
           {(["All", "xStocks", "Crypto"] as Category[]).map((option) => (
             <button
               key={option}
               type="button"
               onClick={() => onCategory(option)}
               aria-pressed={category === option}
-              className={`rounded-[5px] border px-3 py-1.5 text-sm sm:text-base ${category === option ? "border-[#e1ff1f] bg-[#212121] text-[#7f7f7f]" : "border-transparent bg-[#212121] text-[#7f7f7f]"}`}
+              className={`rounded-[5px] border px-3 py-1.5 text-sm sm:text-base ${category === option ? "border-accent bg-surface-raised text-muted" : "border-transparent bg-surface-raised text-muted"}`}
             >
               {option}
             </button>
           ))}
         </div>
-        <label className="flex min-w-0 flex-1 items-center gap-1 rounded-[10px] bg-[#212121] px-3 py-2.5 sm:max-w-xs">
+        <label className="flex min-w-0 flex-1 items-center gap-1 rounded-[10px] bg-surface-raised px-3 py-2.5 sm:max-w-xs">
           <AssetIcon src={icons.search} width={16} height={16} />
           <span className="sr-only">Search assets</span>
           <input
             value={search}
             onChange={(event) => onSearch(event.target.value)}
             placeholder="Search..."
-            className="min-w-0 w-full bg-transparent text-[12px] outline-none placeholder:text-[#777]"
+            className="min-w-0 w-full bg-transparent text-[12px] outline-none placeholder:text-muted"
           />
         </label>
       </div>
@@ -225,18 +225,18 @@ function AssetPicker({
               type="button"
               onClick={() => onSelect(index)}
               aria-pressed={selected === index}
-              className={`flex items-center gap-3 rounded-[10px] border bg-[#212121] px-4 py-3 text-left transition hover:border-[#ccff00] ${selected === index ? "border-[#ccff00]" : "border-transparent"}`}
+              className={`flex items-center gap-3 rounded-[10px] border bg-surface-raised px-4 py-3 text-left transition hover:border-accent ${selected === index ? "border-accent" : "border-transparent"}`}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={icons.apple} alt="" width={34} height={34} />
               <span>
                 <strong className="block text-[16px] font-normal">AAPLx</strong>
-                <span className="text-[16px] text-[#7f7f7f]">Apple</span>
+                <span className="text-[16px] text-muted">Apple</span>
               </span>
             </button>
           ))
         ) : (
-          <p className="col-span-full py-7 text-center text-[#999]">
+          <p className="col-span-full py-7 text-center text-muted">
             No assets match your search.
           </p>
         )}
@@ -251,10 +251,10 @@ function IdentityStep({ next }: { next: () => void }) {
       <h2 className="text-xl font-bold leading-snug sm:text-2xl">
         Verify your identity
       </h2>
-      <div className="mb-[33px] mt-[14px] h-px bg-[#383838]" />
+      <div className="mb-[33px] mt-[14px] h-px bg-surface-raised" />
       <div className="flex flex-wrap items-center justify-between gap-4">
         <ProfileIdentity />
-        <span className="text-[14px] text-[#34c759]">Identity verified ✓</span>
+        <span className="text-[14px] text-positive">Identity verified ✓</span>
       </div>
       <div className="mt-[10px]">
         <FlowActions next={next} />
@@ -274,7 +274,7 @@ function PairStep(
       <h2 className="text-xl font-bold leading-snug sm:text-2xl">
         Choose your Stock Token
       </h2>
-      <p className="mt-[7px] text-[15px] text-[#999]">
+      <p className="mt-[7px] text-[15px] text-muted">
         Your profile token will trade against this asset.
       </p>
       <div className="mt-[36px]">
@@ -299,7 +299,7 @@ function FirstBuyStep({
   return (
     <div className="mt-[39px]">
       <h2 className="text-[22px] font-semibold">Start your market</h2>
-      <p className="mt-[7px] text-[15px] text-[#999]">Optional first buy.</p>
+      <p className="mt-[7px] text-[15px] text-muted">Optional first buy.</p>
       <div className="mt-[54px]">
         <label
           htmlFor="first-buy"
@@ -321,15 +321,15 @@ function FirstBuyStep({
               key={value}
               type="button"
               onClick={() => onAmount(value)}
-              className={`rounded-[7px] border px-2 py-2 text-sm ${amount === value ? "border-[#ccff00] text-[#ccff00]" : "border-[#424242] bg-[#242424] text-[#aaa]"}`}
+              className={`rounded-[7px] border px-2 py-2 text-sm ${amount === value ? "border-accent text-accent" : "border-line bg-surface-raised text-muted"}`}
             >
               {value} ETH
             </button>
           ))}
         </div>
       </div>
-      <div className="mt-[61px] flex items-center justify-between border-t border-[#383838] pt-[17px] text-[14px]">
-        <span className="text-[#a5a5a5]">Estimated profile tokens</span>
+      <div className="mt-[61px] flex items-center justify-between border-t border-line pt-[17px] text-[14px]">
+        <span className="text-muted">Estimated profile tokens</span>
         <strong>0 @jules_trades</strong>
       </div>
       <FlowActions back={back} next={next} />
@@ -339,16 +339,16 @@ function FirstBuyStep({
 
 function FeeDistribution() {
   return (
-    <div className="mt-8 rounded-[8px] border border-[#3b3b3b] bg-[#222] px-4 py-4 sm:px-5">
+    <div className="mt-8 rounded-[8px] border border-line bg-surface-raised px-4 py-4 sm:px-5">
       <div className="mb-[13px] text-[14px] font-medium">Fee distribution</div>
       <div className="flex h-[9px] overflow-hidden rounded-full">
-        <span className="w-[70%] bg-[#ccff00]" />
+        <span className="w-[70%] bg-action" />
         <span className="w-[20%] bg-[#9a68ff]" />
         <span className="w-[10%] bg-[#ff8d42]" />
       </div>
       <div className="mt-4 grid grid-cols-1 gap-2 text-xs sm:grid-cols-3 sm:text-sm">
         <span>
-          <i className="mr-2 inline-block h-[9px] w-[9px] rounded-full bg-[#ccff00]" />
+          <i className="mr-2 inline-block h-[9px] w-[9px] rounded-full bg-action" />
           Creators <strong>70%</strong>
         </span>
         <span>
@@ -383,25 +383,25 @@ function ReviewStep({
           @jules_trades
         </strong>
       </div>
-      <div className="my-[36px] h-px bg-[#383838]" />
+      <div className="my-[36px] h-px bg-surface-raised" />
       <div className="flex items-center justify-between py-[5px] text-[15px]">
-        <span className="text-[#999]">Pair</span>
+        <span className="text-muted">Pair</span>
         <span className="flex items-center gap-[9px] font-medium">
           <AssetIcon src={icons.usdg} width={39} height={39} /> USDG
         </span>
       </div>
       <div className="mt-[15px] flex items-center justify-between text-[15px]">
-        <span className="text-[#999]">First buy</span>
+        <span className="text-muted">First buy</span>
         <strong>
           {amount && Number(amount) > 0 ? `${amount} ETH` : "Skipped"}
         </strong>
       </div>
-      <div className="mt-[31px] h-px bg-[#383838]" />
+      <div className="mt-[31px] h-px bg-surface-raised" />
       <FeeDistribution />
       {done && (
         <p
           role="status"
-          className="mt-5 text-center text-[14px] text-[#ccff00]"
+          className="mt-5 text-center text-[14px] text-accent"
         >
           Your launch details are ready.
         </p>
@@ -466,7 +466,7 @@ function ScoutDetails(
       <button
         type="button"
         onClick={() => setFoundHandle(props.handle.trim() || "@elonmusk2")}
-        className="mt-3 w-full rounded-[8px] border border-[#ccff00] px-4 py-2.5 text-[15px] font-semibold text-[#ccff00]"
+        className="mt-3 w-full rounded-[8px] border border-accent px-4 py-2.5 text-[15px] font-semibold text-accent"
       >
         Find profile
       </button>
@@ -479,31 +479,31 @@ function ScoutDetails(
       <div className="mt-10 grid gap-8 sm:grid-cols-2">
         <div>
           <h2 className="text-[16px] font-medium">Your Rover Royalty</h2>
-          <strong className="mt-1 block text-4xl font-bold leading-tight tracking-tight text-[#ccff00]">
+          <strong className="mt-1 block text-4xl font-bold leading-tight tracking-tight text-accent">
             15%
           </strong>
-          <p className="mt-1 max-w-xs text-xs text-[#7f7f7f]">
+          <p className="mt-1 max-w-xs text-xs text-muted">
             You earn the Rover share for discovering this market.
           </p>
         </div>
         <div>
           <h2 className="text-[16px] font-medium">Creator Nottingham Vault</h2>
-          <strong className="mt-1 block text-4xl font-bold leading-tight tracking-tight text-[#ccff00]">
+          <strong className="mt-1 block text-4xl font-bold leading-tight tracking-tight text-accent">
             60%
           </strong>
-          <p className="mt-[4px] text-[12px] text-[#7f7f7f]">
+          <p className="mt-[4px] text-[12px] text-muted">
             The creator’s share accumulates until they claim their market.
           </p>
         </div>
       </div>
       <div className="mt-8 flex flex-wrap items-center gap-4 text-xs">
         <span>Pair</span>
-        <span className="text-[#7f7f7f]">@salmapara</span>
+        <span className="text-muted">@salmapara</span>
       </div>
       <button
         type="button"
         onClick={props.back}
-        className="mt-[32px] text-[13px] text-[#888] hover:text-white"
+        className="mt-[32px] text-[13px] text-muted hover:text-foreground"
       >
         Back
       </button>

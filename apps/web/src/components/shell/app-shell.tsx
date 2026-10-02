@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { useRovoContext } from "@/providers/RovoProviders";
 import { useRovoIdentity } from "@/hooks/useRovoIdentity";
 import { useXAccount } from "@/hooks/useRovoQueries";
 import { useFeeAdmin } from "@/hooks/useRovoQueries";
@@ -22,7 +24,7 @@ const navigation = [
 
 const rail = "w-[4.5rem]";
 const tooltip =
-  "pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap rounded-md border border-[#383838] bg-[#191919] px-2.5 py-1 text-xs font-medium text-white opacity-0 shadow-lg group-hover:opacity-100 group-focus-visible:opacity-100";
+  "pointer-events-none absolute left-full top-1/2 z-50 ml-3 -translate-y-1/2 whitespace-nowrap rounded-md border border-line bg-surface px-2.5 py-1 text-xs font-medium text-foreground opacity-0 shadow-lg group-hover:opacity-100 group-focus-visible:opacity-100";
 
 type SearchContextValue = {
   search: string;
@@ -131,7 +133,7 @@ function Sidebar({
       )}
       <aside
         aria-label="Main navigation"
-        className={`flex h-full flex-col bg-black pb-4 ${
+        className={`flex h-full flex-col bg-canvas pb-4 ${
           overlayOpen
             ? "fixed inset-y-0 left-0 z-40 w-60 px-3 shadow-2xl"
             : "w-full px-2"
@@ -173,12 +175,12 @@ function Sidebar({
                   href={item.href}
                   aria-current={active ? "page" : undefined}
                   onClick={onNavigate}
-                  className={`group relative flex items-center gap-2.5 rounded-[15px] py-2.5 text-sm font-medium tracking-[.02em] hover:bg-[#191919] lg:py-3 lg:text-base ${itemAlign} ${
+                  className={`group relative flex items-center gap-2.5 rounded-[15px] py-2.5 text-sm font-medium tracking-[.02em] hover:bg-surface lg:py-3 lg:text-base ${itemAlign} ${
                     active ? styles.navLinkActive : ""
                   }`}
                 >
                   <span
-                    className={`flex size-6 shrink-0 items-center justify-center ${active ? "text-[#ccff00]" : "text-white"}`}
+                    className={`flex size-6 shrink-0 items-center justify-center ${active ? "text-accent" : "text-foreground"}`}
                   >
                     <item.icon />
                   </span>
@@ -194,7 +196,7 @@ function Sidebar({
               href="/admin"
               aria-current={isActive(pathname, "/admin") ? "page" : undefined}
               onClick={onNavigate}
-              className={`group relative flex items-center gap-2.5 rounded-[15px] py-2.5 text-sm font-medium tracking-[.02em] hover:bg-[#191919] lg:py-3 lg:text-base ${itemAlign} ${isActive(pathname, "/admin") ? styles.navLinkActive : ""}`}
+              className={`group relative flex items-center gap-2.5 rounded-[15px] py-2.5 text-sm font-medium tracking-[.02em] hover:bg-surface lg:py-3 lg:text-base ${itemAlign} ${isActive(pathname, "/admin") ? styles.navLinkActive : ""}`}
             >
               <span className="flex size-6 shrink-0 items-center justify-center text-xl" aria-hidden="true">⚙</span>
               <span className={labelClass}>Admin</span>
@@ -205,10 +207,10 @@ function Sidebar({
             href="/docs"
             aria-current={isActive(pathname, "/docs") ? "page" : undefined}
             onClick={onNavigate}
-            className={`group relative flex items-center gap-2.5 rounded-[15px] py-2.5 text-sm font-medium tracking-[.02em] hover:bg-[#191919] lg:py-3 lg:text-base ${itemAlign} ${isActive(pathname, "/docs") ? styles.navLinkActive : ""}`}
+            className={`group relative flex items-center gap-2.5 rounded-[15px] py-2.5 text-sm font-medium tracking-[.02em] hover:bg-surface lg:py-3 lg:text-base ${itemAlign} ${isActive(pathname, "/docs") ? styles.navLinkActive : ""}`}
           >
             <span
-              className={`flex size-6 shrink-0 items-center justify-center ${isActive(pathname, "/docs") ? "text-[#ccff00]" : "text-white"}`}
+              className={`flex size-6 shrink-0 items-center justify-center ${isActive(pathname, "/docs") ? "text-accent" : "text-foreground"}`}
             >
               <DocsIcon />
             </span>
@@ -222,7 +224,7 @@ function Sidebar({
             onClick={onToggle}
             aria-expanded={expanded}
             aria-label={expanded ? "Collapse sidebar" : "Expand sidebar"}
-            className="mt-auto flex items-center justify-center rounded-[15px] py-3 text-white/70 hover:bg-[#191919] hover:text-white"
+            className="mt-auto flex items-center justify-center rounded-[15px] py-3 text-foreground/70 hover:bg-surface hover:text-foreground"
           >
             <span className={overlayOpen ? "hidden" : "lg:hidden"}>
               <Chevron />
@@ -245,7 +247,7 @@ function BottomNav() {
   return (
     <nav
       aria-label="Main navigation"
-      className="flex h-[68px] shrink-0 items-center border-t border-[#252525] bg-black pb-[env(safe-area-inset-bottom)] md:hidden"
+      className="flex h-[68px] shrink-0 items-center border-t border-line bg-canvas pb-[env(safe-area-inset-bottom)] md:hidden"
     >
       {navigation
         .filter((item) => authenticated || item.label !== "Profile")
@@ -260,12 +262,12 @@ function BottomNav() {
               className={`flex min-w-0 flex-1 items-center justify-center ${item.label === "Home" ? "order-1" : item.label === "Profile" ? "order-2" : item.label === "Launch" ? "order-3" : item.label === "Rewards" ? "order-4" : "order-5"}`}
             >
               {item.label === "Launch" ? (
-                <span className="flex size-12 items-center justify-center rounded-xl bg-[#ccff00] text-3xl font-light leading-none text-black">
+                <span className="flex size-12 items-center justify-center rounded-xl bg-action text-3xl font-light leading-none text-ink">
                   +
                 </span>
               ) : (
                 <span
-                  className={`flex size-11 items-center justify-center ${active ? "text-[#ccff00]" : "text-white/50"}`}
+                  className={`flex size-11 items-center justify-center ${active ? "text-accent" : "text-foreground/50"}`}
                 >
                   <item.icon />
                 </span>
@@ -277,14 +279,14 @@ function BottomNav() {
         href="/docs"
         aria-label="Docs"
         aria-current={isActive(pathname, "/docs") ? "page" : undefined}
-        className={`order-5 flex min-w-0 flex-1 items-center justify-center ${isActive(pathname, "/docs") ? "text-[#ccff00]" : "text-white/50"}`}
+        className={`order-5 flex min-w-0 flex-1 items-center justify-center ${isActive(pathname, "/docs") ? "text-accent" : "text-foreground/50"}`}
       >
         <span className="flex size-11 items-center justify-center">
           <DocsIcon />
         </span>
       </Link>
       {!authenticated && (
-        <LoginControl className="order-2 min-w-0 flex-1 text-xs font-semibold text-[#ccff00]" />
+        <LoginControl className="order-2 min-w-0 flex-1 text-xs font-semibold text-accent" />
       )}
     </nav>
   );
@@ -332,7 +334,7 @@ function AccountMenu({
         role="dialog"
         aria-modal="true"
         aria-label="Account menu"
-        className="motion-panel relative max-h-[min(100%,40rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-[#383838] bg-[#111] p-4 text-white shadow-xl"
+        className="motion-panel relative max-h-[min(100%,40rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-line bg-surface p-4 text-foreground shadow-xl"
       >
         <ul className="flex flex-col">
           {rows.map((item) => (
@@ -343,7 +345,7 @@ function AccountMenu({
                 className="flex items-center justify-between py-3 text-base font-medium"
               >
                 {item.label}
-                <span aria-hidden="true" className="text-[#737373]">
+                <span aria-hidden="true" className="text-muted">
                   ›
                 </span>
               </Link>
@@ -364,7 +366,7 @@ function AccountMenu({
           </li>
         </ul>
         {username ? (
-          <div className="mt-2 flex items-center gap-3 rounded-xl border border-[#383838] bg-[#191919] p-3">
+          <div className="mt-2 flex items-center gap-3 rounded-xl border border-line bg-surface p-3">
             {picture ? (
               <img
                 src={picture}
@@ -372,22 +374,22 @@ function AccountMenu({
                 className="h-12 w-12 shrink-0 rounded-full object-cover"
               />
             ) : (
-              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#2a2a2a] text-sm font-semibold uppercase">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-surface-raised text-sm font-semibold uppercase">
                 {username.slice(0, 1)}
               </span>
             )}
             <div className="min-w-0">
               <p className="truncate text-base font-semibold">@{username}</p>
               {linked.data?.followers != null && (
-                <p className="text-sm text-[#a3a3a3]">
+                <p className="text-sm text-muted">
                   {formatFollowers(linked.data.followers)} followers
                 </p>
               )}
             </div>
           </div>
         ) : (
-          <div className="mt-2 rounded-xl border border-[#383838] bg-[#191919] p-3">
-            <p className="text-sm text-[#a3a3a3]">
+          <div className="mt-2 rounded-xl border border-line bg-surface p-3">
+            <p className="text-sm text-muted">
               Link X to launch your own profile token.
             </p>
             <button
@@ -397,13 +399,13 @@ function AccountMenu({
                 if (authenticated) router.push("/onboarding");
                 else login();
               }}
-              className="mt-3 h-10 w-full rounded-lg bg-[#2a2a2a] text-sm font-semibold text-white"
+              className="mt-3 h-10 w-full rounded-lg bg-surface-raised text-sm font-semibold text-foreground"
             >
               {authenticated ? "Link X" : "Log in"}
             </button>
           </div>
         )}
-        <div className="mt-4 border-t border-[#383838] pt-4 text-sm text-[#737373]">
+        <div className="mt-4 border-t border-line pt-4 text-sm text-muted">
           <div className="flex items-center justify-between gap-3">
             <div className="flex flex-wrap gap-x-3 gap-y-2">
               <Link href="/how-it-works" onClick={onClose}>
@@ -516,10 +518,10 @@ function ThemeToggle() {
       aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
       onClick={() => {
         document.documentElement.dataset.theme = next;
-        localStorage.setItem("rovo-theme", next);
+        localStorage.setItem("rovo-solana-theme", next);
         setTheme(next);
       }}
-      className="flex size-10 shrink-0 items-center justify-center rounded-full text-white hover:bg-[#191919]"
+      className="flex size-10 shrink-0 items-center justify-center rounded-full text-foreground hover:bg-surface"
     >
       {theme === "dark" ? <SunIcon /> : <MoonIcon />}
     </button>
@@ -565,7 +567,7 @@ function RovoAddress() {
         await navigator.clipboard.writeText(rovoCa);
         toast.success("$ROVO address copied");
       }}
-      className="hidden h-10 shrink-0 items-center gap-1.5 rounded-full px-2 text-xs font-medium text-white hover:bg-[#191919] sm:inline-flex sm:px-3 sm:text-sm"
+      className="hidden h-10 shrink-0 items-center gap-1.5 rounded-full px-2 text-xs font-medium text-foreground hover:bg-surface sm:inline-flex sm:px-3 sm:text-sm"
     >
       $ROVO {sliceAddress(rovoCa)}
       <CopyIcon />
@@ -613,15 +615,15 @@ function Header({
               aria-label="Open menu"
               aria-expanded={menuOpen}
               onClick={() => setMenuOpen(true)}
-              className="flex size-10 shrink-0 flex-col items-center justify-center gap-1 rounded-full hover:bg-[#191919] md:hidden"
+              className="flex size-10 shrink-0 flex-col items-center justify-center gap-1 rounded-full hover:bg-surface md:hidden"
             >
-              <span className="h-0.5 w-4 rounded-full bg-white" />
-              <span className="h-0.5 w-4 rounded-full bg-white" />
-              <span className="h-0.5 w-4 rounded-full bg-white" />
+              <span className="h-0.5 w-4 rounded-full bg-foreground" />
+              <span className="h-0.5 w-4 rounded-full bg-foreground" />
+              <span className="h-0.5 w-4 rounded-full bg-foreground" />
             </button>
           )}
           {authenticated && address ? (
-            <div className="flex items-center gap-1 rounded-full bg-[#191919] py-1 pl-1 pr-2.5 text-[13px] font-medium text-white md:gap-1.5 md:rounded-[10px] md:bg-[#ccff00] md:px-4 md:py-2 md:text-sm md:text-black">
+            <div className="flex items-center gap-1 rounded-full bg-surface py-1 pl-1 pr-2.5 text-[13px] font-medium text-foreground md:gap-1.5 md:rounded-[10px] md:bg-action md:px-4 md:py-2 md:text-sm md:text-ink">
               <button
                 type="button"
                 aria-label="Open account menu"
@@ -676,7 +678,7 @@ function Header({
           aria-label="X"
           target="_blank"
           rel="noreferrer"
-          className="hidden size-10 shrink-0 items-center justify-center rounded-full hover:bg-[#191919] md:order-2 md:flex"
+          className="hidden size-10 shrink-0 items-center justify-center rounded-full hover:bg-surface md:order-2 md:flex"
         >
           <AssetIcon src={icons.x} width={16} height={16} />
         </a>
@@ -687,6 +689,14 @@ function Header({
 }
 
 function Footer() {
+  const toast = useToast();
+  const { api } = useRovoContext();
+  const token = useQuery({
+    queryKey: ["rovo", "rovo-token"],
+    queryFn: ({ signal }) => api.rovoToken(signal),
+    staleTime: 30_000,
+  });
+  const address = token.data?.address ?? null;
   return (
     <footer className={styles.footer} id="footer-links">
       <div className={styles.footerLinks}>
@@ -698,6 +708,20 @@ function Footer() {
         <a href="/terms">Terms of Service</a>
         <a href="/docs">Docs</a>
       </div>
+      {address ? (
+        <button
+          type="button"
+          onClick={async () => {
+            await navigator.clipboard.writeText(address);
+            toast.success("$ROVO address copied");
+          }}
+          className="shrink-0 font-mono text-foreground/80 hover:text-foreground"
+        >
+          $ROVO {sliceAddress(address)}
+        </button>
+      ) : (
+        <span className="shrink-0 font-mono">$ROVO n/a</span>
+      )}
       <span className="shrink-0">© 2026 Rovo</span>
     </footer>
   );
@@ -746,12 +770,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   };
 
   if (pathname.startsWith("/docs")) {
-    return <div className="h-dvh overflow-y-auto bg-[#101110]">{children}</div>;
+    return <div className="h-dvh overflow-y-auto bg-surface">{children}</div>;
   }
 
   return (
     <SearchContext.Provider value={{ search, setSearch }}>
-      <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-black">
+      <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-canvas">
         <div className="flex min-h-0 min-w-0 flex-1">
           <Sidebar
             pinnedOpen={pinnedOpen}

@@ -1,63 +1,29 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  decodeEventLog,
-  formatUnits,
-  isAddress,
-  parseUnits,
-  toHex,
-  zeroAddress,
-  type Address,
-  type Hex,
-  type PublicClient,
-  type TransactionReceipt,
-} from "viem";
-import { ponsFactoryAbi, wrapperAbi } from "@/lib/contracts/abis";
-import { pairChoices, pairIconSrc, type PairChoice } from "@/lib/pairs";
+  useCreateWallet,
+  useSignAndSendTransaction,
+  useWallets as useSolanaWallets,
+} from "@privy-io/react-auth/solana";
 import { MemeLaunchForm } from "./meme-launch-form";
 import { normalizeHandle } from "@/lib/validation";
 import { useRovoIdentity } from "@/hooks/useRovoIdentity";
-import { useRovoActions } from "@/hooks/useRovoActions";
-import {
-  rovoKeys,
-  useLaunchFee,
-  useTokenForHandle,
-  useXAccount,
-  useXSearch,
-} from "@/hooks/useRovoQueries";
+import { useXAccount, useXSearch } from "@/hooks/useRovoQueries";
 import type { XAccountView } from "@/lib/api";
 import { useToast } from "@/components/toast/toast-provider";
-import { useRovoContext } from "@/providers/RovoProviders";
-import { minTokensAtSlippage, quoteOpeningBuy } from "@/lib/contracts/curve-quote";
-import { formatQuoteAmount, quoteEthForToken } from "@/lib/contracts/uniswap";
-import { formatPriceUsd, formatUsd } from "@/lib/token-market";
-import type { TokenMetadata } from "@/lib/contracts/types";
+import { launchPairs, type LaunchPair } from "@/lib/raydium/pairs";
+import { launchRaydiumToken } from "@/lib/raydium/raydium-launch";
 
 type Mode = "self" | "scout" | "meme";
 type PairKind = "all" | "xstocks" | "crypto";
 
-const LAUNCH_CONFIG_ID = 0;
-const CREATOR_TAX_BPS = 200;
-const BUY_PRESETS = ["0.05", "0.1", "1", "5"] as const;
-const ETH_BUY_PRESETS = ["0.001", "0.01", "0.05", "0.1"] as const;
-const CRYPTO_SYMBOLS = new Set(["ETH", "USDG"]);
+const BUY_PRESETS = ["0.5", "1", "2", "5"] as const;
 const STEPS = ["Identity", "Pair", "First Buy", "Review"] as const;
 
 const continueButton =
-  "flex h-[53px] min-w-0 flex-1 items-center justify-center rounded-[10px] bg-[#ccff00] text-base font-semibold text-black disabled:cursor-not-allowed disabled:opacity-45";
-
-function parseAmount(amount: string, decimals: number) {
-  try {
-    const value = parseUnits(amount.trim(), decimals);
-    return value > 0n ? value : null;
-  } catch {
-    return null;
-  }
-}
+  "flex h-[53px] min-w-0 flex-1 items-center justify-center rounded-[10px] bg-action text-base font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-45";
 
 function queryText(value: string) {
   return value.trim().replace(/^@+/, "");
@@ -86,155 +52,24 @@ function trimCount(value: number) {
   return value.toFixed(1).replace(/\.0$/, "");
 }
 
-function isCryptoPair(symbol: string) {
-  return CRYPTO_SYMBOLS.has(symbol);
-}
-
-type ExistingMarket = {
-  available?: boolean;
-  marketCapUsd?: number;
-  priceUsd?: number | null;
-};
-
-type ExistingFee = {
-  earnedForToken?: string;
-  quoteAsset?: { symbol?: string; decimals?: number };
-  usdValue?: number;
-};
-
-function formatExistingFee(fee: ExistingFee) {
-  if (typeof fee.usdValue === "number") return formatUsd(fee.usdValue);
-  return "—";
-}
-
-function ExistingTokenDetails({ token }: { token: Address }) {
-  const [market, setMarket] = useState<ExistingMarket | null>(null);
-  const [fee, setFee] = useState<string | null>(null);
-  useEffect(() => {
-    let cancelled = false;
-    setMarket(null);
-    setFee(null);
-    void Promise.all([
-      fetch(`/api/market/${token}`).then((response) =>
-        response.ok ? response.json() : null,
-      ),
-      fetch(`/api/creator-fees/${token}`).then((response) =>
-        response.ok ? response.json() : null,
-      ),
-    ])
-      .then(([marketBody, feeBody]: [ExistingMarket | null, ExistingFee | null]) => {
-        if (cancelled) return;
-        setMarket(marketBody ?? { available: false });
-        setFee(feeBody ? formatExistingFee(feeBody) : "—");
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setMarket({ available: false });
-          setFee("—");
-        }
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [token]);
-  const stats = [
-    ["MCAP", market == null ? null : typeof market.marketCapUsd === "number" ? formatUsd(market.marketCapUsd) : "—"],
-    ["Price", market == null ? null : typeof market.priceUsd === "number" ? formatPriceUsd(market.priceUsd) : "—"],
-    ["Creator fee", fee],
-  ] as const;
-  return (
-    <div className="mt-6 grid grid-cols-3 gap-3" aria-busy={market == null || fee == null}>
-      {stats.map(([label, value]) => (
-        <div key={label}>
-          <p className="text-xs text-[#737373]">{label}</p>
-          {value == null ? (
-            <span className="shimmer mt-2 block h-4 w-16 rounded" />
-          ) : (
-            <p className="mt-1 text-sm font-semibold text-[#ccff00]">{value}</p>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-}
-
 type LaunchedToken = {
   name: string;
   symbol: string;
-  mint: Address | null;
-  txHash: Hex;
+  mint: string;
+  signature: string;
   kind: Mode;
   pair: string;
   creatorTax: number;
 };
 
-async function memeMintFromReceipt(
-  client: PublicClient,
-  factory: Address,
-  receipt: TransactionReceipt,
-) {
-  const candidates = new Set<Address>();
-  for (const log of receipt.logs) {
-    for (const topic of log.topics.slice(1)) {
-      if (!topic || topic.length !== 66) continue;
-      const address = `0x${topic.slice(26)}`;
-      if (isAddress(address) && address !== zeroAddress) candidates.add(address);
-    }
-  }
-  for (const token of candidates) {
-    try {
-      const launched = await client.readContract({
-        address: factory,
-        abi: ponsFactoryAbi,
-        functionName: "getLaunchedToken",
-        args: [token],
-      });
-      if (launched.exists) return token;
-    } catch {
-      continue;
-    }
-  }
-  return null;
-}
-
-async function uploadLaunchImage(file: File) {
-  const body = new FormData();
-  body.append("file", file);
-  const response = await fetch("/api/pinata", { method: "POST", body });
-  const payload = (await response.json().catch(() => null)) as {
-    url?: string;
-    error?: string;
-  } | null;
-  if (!response.ok || !payload?.url) {
-    throw new Error(payload?.error ?? "Image upload failed.");
-  }
-  return payload.url;
-}
-
-function tokenFromReceipt(receipt: TransactionReceipt): Address | null {
-  for (const log of receipt.logs) {
-    try {
-      const decoded = decodeEventLog({
-        abi: wrapperAbi,
-        data: log.data,
-        topics: log.topics,
-      });
-      if (decoded.eventName === "RovoLaunchCreated") return decoded.args.token;
-    } catch {
-      continue;
-    }
-  }
-  return null;
-}
-
 export function LaunchLive() {
   const router = useRouter();
   const identity = useRovoIdentity();
-  const { api, reads, config, publicClient } = useRovoContext();
-  const queryClient = useQueryClient();
   const toast = useToast();
-  const wallet = identity.wallets[0]?.address as Address | undefined;
-  const actions = useRovoActions(wallet);
+  const { wallets: solanaWallets } = useSolanaWallets();
+  const { signAndSendTransaction } = useSignAndSendTransaction();
+  const { createWallet } = useCreateWallet();
+  const solanaWallet = solanaWallets[0];
   const [mode, setMode] = useState<Mode>("self");
   const [step, setStep] = useState(1);
   const [scoutQuery, setScoutQuery] = useState("");
@@ -242,12 +77,10 @@ export function LaunchLive() {
   const [debouncedScout, setDebouncedScout] = useState("");
   const [search, setSearch] = useState("");
   const [pairKind, setPairKind] = useState<PairKind>("all");
-  const [pairToken, setPairToken] = useState<Address | undefined>();
+  const [pairToken, setPairToken] = useState<string | undefined>();
   const [openingAmount, setOpeningAmount] = useState("");
-  const [openingAsset, setOpeningAsset] = useState<"pair" | "eth">("eth");
   const [busy, setBusy] = useState(false);
   const [busyLabel, setBusyLabel] = useState("Confirming…");
-  const [checkingExisting, setCheckingExisting] = useState(false);
   const [error, setError] = useState("");
   const [launched, setLaunched] = useState<LaunchedToken | null>(null);
   const [memeName, setMemeName] = useState("");
@@ -259,7 +92,6 @@ export function LaunchLive() {
   const [memeWebsite, setMemeWebsite] = useState("");
   const [memeTelegram, setMemeTelegram] = useState("");
   const [memeTwitter, setMemeTwitter] = useState("");
-  const fee = useLaunchFee();
   const ownHandle = identity.xAccount?.username ?? "";
   const scoutText = queryText(scoutQuery);
   const scoutSelected =
@@ -270,7 +102,6 @@ export function LaunchLive() {
   const xSearch = useXSearch(
     mode === "scout" && !scoutSelected ? debouncedScout : undefined,
   );
-  const existing = useTokenForHandle(handle);
   const displayName =
     mode === "meme"
       ? memeName.trim()
@@ -294,37 +125,22 @@ export function LaunchLive() {
     (mode === "scout" ? (scoutProfile?.followers ?? null) : null);
   const visiblePairs = useMemo(() => {
     const query = search.toLowerCase().trim();
-    return pairChoices.filter((pair) => {
-      const kindMatches =
-        pairKind === "all" ||
-        (pairKind === "crypto"
-          ? isCryptoPair(pair.symbol)
-          : !isCryptoPair(pair.symbol));
+    return launchPairs.filter((pair) => {
+      const kindMatches = pairKind === "all" || pair.kind === pairKind;
       const textMatches = `${pair.symbol} ${pair.name}`
         .toLowerCase()
         .includes(query);
       return kindMatches && textMatches;
     });
   }, [pairKind, search]);
-  const selectedPair = pairChoices.find(
-    (pair) => pair.address.toLowerCase() === pairToken?.toLowerCase(),
-  );
+  const selectedPair = launchPairs.find((pair) => pair.mint === pairToken);
   const openingValue = Number(openingAmount);
   const hasOpeningBuy =
     openingAmount.trim() !== "" &&
     Number.isFinite(openingValue) &&
     openingValue > 0;
-  const payInEth = Boolean(
-    pairToken && pairToken !== zeroAddress && openingAsset === "eth",
-  );
-  const paySymbol = payInEth ? "ETH" : (selectedPair?.symbol ?? "ETH");
-  const buyPresets = payInEth ? ETH_BUY_PRESETS : BUY_PRESETS;
-  const ethIn = payInEth && hasOpeningBuy ? parseAmount(openingAmount, 18) : null;
-  const stockQuote = useQuery({
-    queryKey: ["rovo", "eth-stock-quote", pairToken, ethIn?.toString() ?? "0"],
-    enabled: ethIn != null && !!pairToken,
-    queryFn: () => quoteEthForToken(publicClient, pairToken as Address, ethIn as bigint),
-  });
+  const paySymbol = "SOL";
+  const buyPresets = BUY_PRESETS;
 
   useEffect(() => {
     const timer = window.setTimeout(
@@ -337,7 +153,6 @@ export function LaunchLive() {
     setMode(next);
     setStep(1);
     setError("");
-    setCheckingExisting(false);
     setScoutQuery("");
     setScoutProfile(null);
   };
@@ -352,8 +167,12 @@ export function LaunchLive() {
       identity.login();
       return;
     }
-    if (!wallet) {
-      await identity.connectOrCreateWallet();
+    if (!solanaWallet) {
+      try {
+        await createWallet();
+      } catch (cause) {
+        toast.walletError(cause, "Could not create a Solana wallet.");
+      }
       return;
     }
     if (mode === "self" && !identity.xAccount) {
@@ -372,22 +191,11 @@ export function LaunchLive() {
       );
       return;
     }
-    setCheckingExisting(true);
-    try {
-      const token = await queryClient.fetchQuery({
-        queryKey: rovoKeys.chain("token-for-handle", handle.toLowerCase()),
-        queryFn: () => reads.tokenForHandle(handle),
-      });
-      if (token && token !== zeroAddress) {
-        setError("This X profile already has a Rovo token.");
-        return;
-      }
-      setStep(2);
-    } catch {
-      setError("Could not check this profile on-chain. Try again.");
-    } finally {
-      setCheckingExisting(false);
+    if (symbol.replace(/^\$/, "").length > 10) {
+      setError("Raydium symbols can be at most 10 characters.");
+      return;
     }
+    setStep(2);
   };
   const submit = async () => {
     setError("");
@@ -399,201 +207,54 @@ export function LaunchLive() {
       setError("Select an X account from the list.");
       return;
     }
-    if (!actions || !pairToken || !symbol || !displayName) return;
+    if (!solanaWallet || !selectedPair || !symbol || !displayName) return;
+    if (mode === "meme" && !memeFile) {
+      setError("Add a token image before launching.");
+      return;
+    }
+    if (mode !== "meme" && !avatar) {
+      setError("This profile has no photo to use as the token image.");
+      return;
+    }
     setBusy(true);
-    setBusyLabel("Confirming…");
-    let swappedInto: { amount: bigint; decimals: number; symbol: string } | null = null;
+    setBusyLabel("Preparing the Raydium launch…");
     try {
-      let logo = mode === "meme" ? "" : (avatar ?? "");
-      if (mode === "meme" && memeFile) {
-        setBusyLabel("Uploading image…");
-        logo = await uploadLaunchImage(memeFile);
-        setBusyLabel("Confirming…");
-      }
-      const metadata: TokenMetadata = {
+      const result = await launchRaydiumToken({
+        walletAddress: solanaWallet.address,
         name: displayName,
-        symbol,
-        logo,
-        description: mode === "meme" ? memeDescription.trim() : "",
-        socials: {
-          twitter: mode === "meme" ? memeTwitter.trim() : `https://x.com/${symbol}`,
-          telegram: mode === "meme" ? memeTelegram.trim() : "",
-          discord: "",
-          website: mode === "meme" ? memeWebsite.trim() : "",
-          farcaster: "",
-        },
-        salt: toHex(crypto.getRandomValues(new Uint8Array(32))),
-      };
-      if (openingAmount.trim() && !hasOpeningBuy)
-        throw new Error("Enter a positive opening buy amount or leave it blank to skip.");
-      let openingBuy: { quoteIn: bigint; minTokensOut: bigint } | undefined;
-      if (hasOpeningBuy) {
-        try {
-          await reads.atomicLaunchRouter();
-        } catch {
-          throw new Error("Atomic launch is not deployed yet. Switch Rovo to the upgraded launch wrapper before launching.");
-        }
-        let quoteIn: bigint;
-        let decimals: number;
-        if (payInEth) {
-          const ethAmount = parseAmount(openingAmount, 18);
-          if (ethAmount == null)
-            throw new Error("Enter a positive ETH amount for the first buy.");
-          const pairInfo = await reads.tokenInfo(pairToken);
-          decimals = pairInfo.decimals;
-          const pairSymbol = pairInfo.symbol;
-          if (wallet) {
-            const balance = await reads.tokenBalance(zeroAddress, wallet);
-            const required = ethAmount + (fee.data ?? 0n);
-            if (balance < required) {
-              throw new Error(
-                `This first buy needs ${formatUnits(required, 18)} ETH, including the launch fee, but the wallet has ${formatUnits(balance, 18)} ETH.`,
-              );
-            }
-          }
-          setBusyLabel("Swapping ETH…");
-          const quoted = await quoteEthForToken(publicClient, pairToken, ethAmount);
-          const minStockOut = minTokensAtSlippage(quoted.amountOut);
-          if (minStockOut <= 0n)
-            throw new Error(`This ETH amount is too small to swap into ${pairSymbol}.`);
-          const received = await actions.swapEthForToken({
-            tokenOut: pairToken,
-            amountIn: ethAmount,
-            fee: quoted.fee,
-            minAmountOut: minStockOut,
-          });
-          swappedInto = { amount: received, decimals, symbol: pairSymbol };
-          quoteIn = received;
-          setBusyLabel("Confirming…");
-        } else {
-          decimals =
-            pairToken === zeroAddress
-              ? 18
-              : (await reads.tokenInfo(pairToken)).decimals;
-          quoteIn = parseUnits(openingAmount.trim(), decimals);
-          if (quoteIn > 0n && wallet) {
-            const balance = await reads.tokenBalance(pairToken, wallet);
-            const required = pairToken === zeroAddress ? quoteIn + (fee.data ?? 0n) : quoteIn;
-            if (balance < required) {
-              const symbolName = pairToken === zeroAddress ? "ETH" : (await reads.tokenInfo(pairToken)).symbol;
-              const hint =
-                pairToken === zeroAddress
-                  ? `Add ${symbolName} or launch without a first buy.`
-                  : `Pay the first buy in ETH, add ${symbolName}, or launch without a first buy.`;
-              throw new Error(
-                `This first buy needs ${formatUnits(required, decimals)} ${symbolName}, but the wallet has ${formatUnits(balance, decimals)} ${symbolName}. ${hint}`,
-              );
-            }
-          }
-        }
-        if (quoteIn > 0n) {
-          const curve = await reads.launchCurve(LAUNCH_CONFIG_ID, pairToken);
-          const creatorTaxBps =
-            mode === "scout"
-              ? BigInt(await reads.scoutCreatorTaxBps())
-              : mode === "meme"
-                ? BigInt(Math.round(memeTax * 100))
-                : BigInt(CREATOR_TAX_BPS);
-          const minTokensOut = minTokensAtSlippage(
-            quoteOpeningBuy({
-              quoteIn,
-              supply: curve.supply,
-              phantomQuote: curve.phantomQuote,
-              graduationThreshold: curve.graduationThreshold,
-              feeBps: curve.feeBps,
-              creatorTaxBps,
-            }),
-          );
-          if (minTokensOut <= 0n) {
-            throw new Error("This opening buy is too small to receive profile tokens.");
-          }
-          if (pairToken !== zeroAddress && wallet) {
-            const spender =
-              mode === "meme"
-                ? await reads.atomicLaunchRouter()
-                : config.addresses.wrapper;
-            const allowance = await reads.allowance(pairToken, wallet, spender);
-            if (allowance < quoteIn) {
-              await actions.approveToken(pairToken, spender, quoteIn);
-            }
-          }
-          openingBuy = { quoteIn, minTokensOut };
-        }
-      }
-      const receipt =
-        mode === "meme"
-          ? await actions.launchMeme({
-              metadata,
-              launchConfigId: LAUNCH_CONFIG_ID,
-              pairToken,
-              creatorTaxBps: Math.round(memeTax * 100),
-              ...(openingBuy ? { openingBuy } : {}),
+        ticker: symbol,
+        description:
+          mode === "meme"
+            ? memeDescription.trim()
+            : `${displayName} was launched on rovo.fun`,
+        xLink: mode === "meme" ? memeTwitter.trim() : `https://x.com/${symbol}`,
+        website: mode === "meme" ? memeWebsite.trim() : "",
+        telegram: mode === "meme" ? memeTelegram.trim() : "",
+        customBuy: hasOpeningBuy ? openingAmount.trim() : "",
+        imageFile: mode === "meme" ? memeFile : null,
+        ...(mode !== "meme" && avatar ? { imageUrl: avatar } : {}),
+        pairedAsset: selectedPair,
+        quoteMintAddress: selectedPair.mint,
+        onStatus: setBusyLabel,
+        sendTransaction: async (transaction, chain) =>
+          (
+            await signAndSendTransaction({
+              transaction,
+              wallet: solanaWallet,
+              chain,
             })
-          : mode === "self"
-            ? await actions.launchSelfRove({
-                metadata,
-                launchConfigId: LAUNCH_CONFIG_ID,
-                pairToken,
-                creatorTaxBps: CREATOR_TAX_BPS,
-                ...(openingBuy ? { openingBuy } : {}),
-              })
-            : await actions.launchScout({
-                metadata,
-                launchConfigId: LAUNCH_CONFIG_ID,
-                pairToken,
-                handle: symbol,
-                ...(openingBuy ? { openingBuy } : {}),
-              });
-      const factory =
-        mode === "meme"
-          ? await publicClient.readContract({
-              address: config.addresses.wrapper,
-              abi: wrapperAbi,
-              functionName: "pons",
-            })
-          : null;
-      const fromReceipt =
-        mode === "meme" && factory
-          ? await memeMintFromReceipt(publicClient, factory, receipt)
-          : tokenFromReceipt(receipt);
-      const fromRegistry =
-        fromReceipt ?? (mode === "meme" ? null : await reads.tokenForHandle(symbol));
-      const mint =
-        fromRegistry && fromRegistry !== zeroAddress ? fromRegistry : null;
-      if (mint) {
-        try {
-          await api.recordLaunch({
-            token: mint,
-            transactionHash: receipt.transactionHash,
-            handle: symbol,
-          });
-          await queryClient.invalidateQueries({
-            queryKey: ["rovo", "chain", "launches"],
-          });
-          await queryClient.invalidateQueries({
-            queryKey: ["rovo", "chain", "api-launch", mint.toLowerCase()],
-          });
-        } catch {
-          // The background launch sync still records the row after confirmations.
-        }
-      }
+          ).signature,
+      });
       setLaunched({
         name: displayName,
         symbol,
-        mint,
-        txHash: receipt.transactionHash,
+        mint: result.mint,
+        signature: result.signature,
         kind: mode,
-        pair: selectedPair?.symbol ?? "ETH",
+        pair: selectedPair.symbol,
         creatorTax: memeTax,
       });
     } catch (cause) {
-      if (swappedInto) {
-        setOpeningAsset("pair");
-        setOpeningAmount(formatQuoteAmount(swappedInto.amount, swappedInto.decimals));
-        setError(
-          `ETH was swapped into ${formatQuoteAmount(swappedInto.amount, swappedInto.decimals)} ${swappedInto.symbol}, but the launch did not finish. The first buy is now that ${swappedInto.symbol} amount, so you can launch again without another swap.`,
-        );
-      }
       toast.walletError(cause, "The launch did not finish.");
     } finally {
       setBusy(false);
@@ -601,31 +262,18 @@ export function LaunchLive() {
     }
   };
 
-  const launchedToken =
-    existing.data && existing.data !== zeroAddress ? existing.data : null;
-  const waitingOnExisting =
-    Boolean(handle) &&
-    (checkingExisting || (existing.isPending && !existing.isError));
-  const identityReady =
-    identity.authenticated &&
-    Boolean(wallet) &&
-    (mode !== "self" || Boolean(identity.xAccount)) &&
-    (mode !== "scout" || Boolean(scoutProfile));
-
   const identityLabel = !identity.authenticated
     ? "Log in to continue"
-    : !wallet
-      ? "Connect wallet"
-      : mode === "self" && !identity.xAccount
+    : !solanaWallet
+      ? "Create Solana wallet"
+        : mode === "self" && !identity.xAccount
         ? "Link X account"
-        : waitingOnExisting
-          ? "Checking…"
-          : "Continue";
+        : "Continue";
 
   return (
-    <main className={`mx-auto w-full px-4 py-6 text-white sm:px-6 sm:py-10 ${mode === "meme" ? "max-w-6xl" : "max-w-4xl"}`}>
-      <section className="rounded-[20px] bg-[#191919] p-4 md:p-10">
-        <div className="inline-flex h-auto max-w-full items-center gap-1 overflow-x-auto rounded-[5px] bg-[#212121] p-1">
+    <main className={`mx-auto w-full px-4 py-6 text-foreground sm:px-6 sm:py-10 ${mode === "meme" ? "max-w-6xl" : "max-w-4xl"}`}>
+      <section className="rounded-[20px] bg-surface p-4 md:p-10">
+        <div className="inline-flex h-auto max-w-full items-center gap-1 overflow-x-auto rounded-[5px] bg-surface-raised p-1">
           {(
             [
               ["self", "Your X profile"],
@@ -640,8 +288,8 @@ export function LaunchLive() {
               aria-pressed={mode === value}
               className={`flex h-[33px] shrink-0 items-center justify-center rounded-[5px] px-3 text-sm ${
                 mode === value
-                  ? "border border-[#e1ff1f] bg-[#ccff00] font-medium text-black"
-                  : "bg-[#383838] text-[#7f7f7f]"
+                  ? "border border-accent bg-action font-medium text-ink"
+                  : "bg-surface-raised text-muted"
               }`}
             >
               {label}
@@ -670,7 +318,7 @@ export function LaunchLive() {
             <span
               key={label}
               className={
-                index + 1 === step ? "text-[#ccff00]" : "text-[#737373]"
+                index + 1 === step ? "text-accent" : "text-muted"
               }
             >
               {`0${index + 1}`} {label}
@@ -719,30 +367,28 @@ export function LaunchLive() {
             search={search}
             onSearch={setSearch}
             pairToken={pairToken}
-            onPair={(address) => {
-              if (address.toLowerCase() !== pairToken?.toLowerCase()) setOpeningAsset("eth");
-              setPairToken(address);
-            }}
+            onPair={(mint) => setPairToken(mint)}
             selectedPair={selectedPair}
             openingAmount={openingAmount}
             onOpeningAmount={setOpeningAmount}
-            openingAsset={openingAsset}
-            onOpeningAsset={setOpeningAsset}
             paySymbol={paySymbol}
-            payInEth={payInEth}
             hasOpeningBuy={hasOpeningBuy}
             openingValue={openingValue}
             buyPresets={buyPresets}
             busy={busy}
-            launchLabel={!identity.authenticated ? "Log in" : !wallet ? "Connect wallet" : busy ? busyLabel : "Launch"}
+            launchLabel={!identity.authenticated ? "Log in" : !solanaWallet ? "Create Solana wallet" : busy ? busyLabel : "Launch"}
             onLaunch={async () => {
               setError("");
               if (!identity.authenticated) {
                 identity.login();
                 return;
               }
-              if (!wallet) {
-                await identity.connectOrCreateWallet();
+              if (!solanaWallet) {
+                try {
+                  await createWallet();
+                } catch (cause) {
+                  toast.walletError(cause, "Could not create a Solana wallet.");
+                }
                 return;
               }
               if (!memeName.trim() || !memeSymbol.trim()) {
@@ -768,11 +414,11 @@ export function LaunchLive() {
               {mode === "self" ? "Your X account" : "Choose a creator"}
             </h2>
             {mode === "scout" && (
-              <p className="mt-1 text-base tracking-[0.32px] text-[#737373]">
+              <p className="mt-1 text-base tracking-[0.32px] text-muted">
                 The token uses their X name, photo, and username.
               </p>
             )}
-            <div className="mt-4 h-px bg-[#383838]" />
+            <div className="mt-4 h-px bg-surface-raised" />
             {mode === "self" ? (
               identity.xAccount && ownHandle ? (
                 <div className="mt-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -782,10 +428,10 @@ export function LaunchLive() {
                     avatar={avatar}
                     followers={followers}
                   />
-                  <p className="text-sm text-[#34c759]">Identity verified ✓</p>
+                  <p className="text-sm text-positive">Identity verified ✓</p>
                 </div>
               ) : (
-                <p className="mt-8 text-sm text-[#7f7f7f]">
+                <p className="mt-8 text-sm text-muted">
                   Link your X account. Its photo, name, and username become
                   the token.
                 </p>
@@ -811,24 +457,24 @@ export function LaunchLive() {
                     aria-expanded={scoutText.length >= 2 && !scoutSelected}
                     aria-controls="scout-results"
                     autoComplete="off"
-                    className="mt-2 h-[50px] w-full rounded-[10px] border border-[#383838] bg-[#191919] px-3 text-sm text-white outline-none placeholder:text-[#7f7f7f] focus:border-[#ccff00]"
+                    className="mt-2 h-[50px] w-full rounded-[10px] border border-line bg-surface px-3 text-sm text-foreground outline-none placeholder:text-muted focus:border-accent"
                   />
                 </label>
                 {scoutText.length >= 2 && !scoutSelected && (
                   <div
                     id="scout-results"
-                    className="mt-2 max-h-80 overflow-y-auto overscroll-contain rounded-[10px] border border-[#383838] bg-[#191919]"
+                    className="mt-2 max-h-80 overflow-y-auto overscroll-contain rounded-[10px] border border-line bg-surface"
                   >
                     {xSearch.isPending ? (
-                      <p className="px-3 py-3 text-sm text-[#7f7f7f]">
+                      <p className="px-3 py-3 text-sm text-muted">
                         Searching X…
                       </p>
                     ) : xSearch.isError ? (
-                      <p className="px-3 py-3 text-sm text-[#ffaaaa]">
+                      <p className="px-3 py-3 text-sm text-danger">
                         X search is unavailable.
                       </p>
                     ) : (xSearch.data?.accounts.length ?? 0) === 0 ? (
-                      <p className="px-3 py-3 text-sm text-[#7f7f7f]">
+                      <p className="px-3 py-3 text-sm text-muted">
                         No X accounts match that search.
                       </p>
                     ) : (
@@ -840,7 +486,7 @@ export function LaunchLive() {
                               role="option"
                               aria-selected={false}
                               onClick={() => selectScout(account)}
-                              className="flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-[#212121]"
+                              className="flex w-full items-center gap-3 px-3 py-3 text-left hover:bg-surface-raised"
                             >
                               <Avatar
                                 src={xAvatarUrl(account.imageUrl)}
@@ -854,7 +500,7 @@ export function LaunchLive() {
                                   </span>
                                   {account.verified ? <VerifiedMark /> : null}
                                 </strong>
-                                <small className="block truncate text-sm text-[#7f7f7f]">
+                                <small className="block truncate text-sm text-muted">
                                   @{account.handle}
                                   {account.followers != null
                                     ? ` · ${formatFollowers(account.followers)} followers`
@@ -883,30 +529,19 @@ export function LaunchLive() {
                 )}
               </div>
             )}
-            {launchedToken && <ExistingTokenDetails token={launchedToken} />}
-            {launchedToken ? (
-              <Link
-                href={`/token/${launchedToken}`}
-                className={`${continueButton} mt-10 w-full`}
-              >
-                View token
-              </Link>
-            ) : (
-              <button
+            <button
                 type="button"
                 onClick={continueIdentity}
                 disabled={
-                  (mode === "scout" &&
-                    identity.authenticated &&
-                    !!wallet &&
-                    !scoutProfile) ||
-                  (identityReady && waitingOnExisting)
+                  mode === "scout" &&
+                  identity.authenticated &&
+                  !!solanaWallet &&
+                  !scoutProfile
                 }
                 className={`${continueButton} mt-10 w-full`}
               >
                 {identityLabel}
               </button>
-            )}
           </div>
         )}
 
@@ -915,7 +550,7 @@ export function LaunchLive() {
             <h2 className="text-[23px] font-bold tracking-[-0.69px]">
               Choose your Stock Token
             </h2>
-            <p className="text-base tracking-[0.32px] text-[#737373]">
+            <p className="text-base tracking-[0.32px] text-muted">
               {mode === "self"
                 ? "Your profile token will trade against this asset."
                 : mode === "scout"
@@ -924,7 +559,7 @@ export function LaunchLive() {
             </p>
             <p className="mt-6 text-base">Pair with</p>
             <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex h-[55px] items-center gap-3 rounded-[10px] bg-[#191919] px-3">
+              <div className="flex h-[55px] items-center gap-3 rounded-[10px] bg-surface px-3">
                 {(
                   [
                     ["all", "All"],
@@ -937,43 +572,37 @@ export function LaunchLive() {
                     type="button"
                     aria-pressed={pairKind === value}
                     onClick={() => setPairKind(value)}
-                    className={`flex h-8 items-center justify-center rounded-[5px] bg-[#212121] px-5 text-base text-[#7f7f7f] ${
-                      pairKind === value ? "border border-[#e1ff1f]" : ""
+                    className={`flex h-8 items-center justify-center rounded-[5px] bg-surface-raised px-5 text-base text-muted ${
+                      pairKind === value ? "border border-accent" : ""
                     }`}
                   >
                     {label}
                   </button>
                 ))}
               </div>
-              <label className="flex h-10 w-full items-center gap-1 rounded-[10px] bg-[#212121] px-3 lg:w-[259px]">
+              <label className="flex h-10 w-full items-center gap-1 rounded-[10px] bg-surface-raised px-3 lg:w-[259px]">
                 <img src="/figma-launch/search.svg" alt="" className="size-4" />
                 <input
                   value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   placeholder="Search..."
                   aria-label="Search pair tokens"
-                  className="w-full bg-transparent text-xs text-white outline-none placeholder:text-[#7f7f7f]"
+                  className="w-full bg-transparent text-xs text-foreground outline-none placeholder:text-muted"
                 />
               </label>
             </div>
             <div className="mt-6 grid max-h-[280px] grid-cols-1 gap-4 overflow-y-auto sm:grid-cols-2 lg:grid-cols-3">
               {visiblePairs.map((pair) => (
                 <PairCard
-                  key={pair.address}
+                  key={pair.mint}
                   pair={pair}
-                  selected={
-                    pairToken?.toLowerCase() === pair.address.toLowerCase()
-                  }
-                  onSelect={() => {
-                    if (pair.address.toLowerCase() !== pairToken?.toLowerCase())
-                      setOpeningAsset("eth");
-                    setPairToken(pair.address);
-                  }}
+                  selected={pairToken === pair.mint}
+                  onSelect={() => setPairToken(pair.mint)}
                 />
               ))}
             </div>
             {visiblePairs.length === 0 && (
-              <p className="mt-4 text-sm text-[#7f7f7f]">
+              <p className="mt-4 text-sm text-muted">
                 No pair tokens match.
               </p>
             )}
@@ -990,62 +619,20 @@ export function LaunchLive() {
             <h2 className="text-[23px] font-bold tracking-[-0.69px]">
               Start your market
             </h2>
-            <p className="text-base tracking-[0.32px] text-[#737373]">
-              Optional first buy.
+            <p className="text-base tracking-[0.32px] text-muted">
+              Optional first buy in SOL. If the pair is not SOL, Raydium swaps SOL into that token before the launch.
             </p>
-            {pairToken && pairToken !== zeroAddress && (
-              <div className="mt-6">
-                <p className="text-base" id="opening-currency-label">
-                  Pay with
-                </p>
-                <div
-                  className="mt-2 flex h-[55px] w-fit items-center gap-3 rounded-[10px] bg-[#191919] px-3"
-                  role="group"
-                  aria-labelledby="opening-currency-label"
-                >
-                  {(
-                    [
-                      ["eth", "ETH"],
-                      ["pair", selectedPair?.symbol ?? "Token"],
-                    ] as const
-                  ).map(([value, label]) => (
-                    <button
-                      key={value}
-                      type="button"
-                      aria-pressed={openingAsset === value}
-                      onClick={() => setOpeningAsset(value)}
-                      className={`flex h-8 items-center justify-center rounded-[5px] bg-[#212121] px-5 text-base ${
-                        openingAsset === value
-                          ? "border border-[#e1ff1f] text-white"
-                          : "text-[#7f7f7f]"
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
             <label className="mt-8 block text-base" htmlFor="opening-buy">
-              Initial Buy
+              Initial buy
               <input
                 id="opening-buy"
                 inputMode="decimal"
                 value={openingAmount}
                 onChange={(event) => setOpeningAmount(event.target.value)}
-                placeholder={`e.g 0.01 ${paySymbol}`}
-                className="mt-3 h-[50px] w-full rounded-[10px] border border-[#383838] bg-[#191919] px-3 text-sm text-white outline-none placeholder:text-[#7f7f7f] focus:border-[#ccff00]"
+                placeholder="e.g 0.5 SOL"
+                className="mt-3 h-[50px] w-full rounded-[10px] border border-line bg-surface px-3 text-sm text-foreground outline-none placeholder:text-muted focus:border-accent"
               />
             </label>
-            {payInEth && hasOpeningBuy && (
-              <p className="mt-3 text-sm text-[#737373]" aria-live="polite">
-                {stockQuote.isPending
-                  ? "Checking the Uniswap price…"
-                  : stockQuote.data
-                    ? `Uniswap converts this to about ${formatQuoteAmount(stockQuote.data.amountOut, stockQuote.data.decimals)} ${selectedPair?.symbol ?? "tokens"}. The launch fee stays in ETH.`
-                    : "Uniswap has no ETH pool for this token. Pay in the token itself, or pick another pair."}
-              </p>
-            )}
             <div className="mt-4 flex flex-wrap gap-1.5">
               {buyPresets.map((amount) => {
                 const selected =
@@ -1056,8 +643,8 @@ export function LaunchLive() {
                     type="button"
                     aria-pressed={selected}
                     onClick={() => setOpeningAmount(amount)}
-                    className={`flex h-[50px] w-[104px] items-center justify-center rounded-[10px] border bg-[#212121] text-sm text-[#7f7f7f] ${
-                      selected ? "border-[#ccff00]" : "border-[#383838]"
+                    className={`flex h-[50px] w-[104px] items-center justify-center rounded-[10px] border bg-surface-raised text-sm text-muted ${
+                      selected ? "border-accent" : "border-line"
                     }`}
                   >
                     {amount} {paySymbol}
@@ -1077,16 +664,16 @@ export function LaunchLive() {
                 @{symbol || "profile"}
               </p>
             </div>
-            <div className="mt-6 h-px bg-[#383838]" />
+            <div className="mt-6 h-px bg-surface-raised" />
             <div className="mt-6 flex flex-col gap-6 sm:flex-row sm:items-center sm:gap-16">
               <div className="flex items-center gap-6">
-                <p className="text-base tracking-[0.32px] text-[#737373]">
+                <p className="text-base tracking-[0.32px] text-muted">
                   Pair
                 </p>
                 <div className="flex items-center gap-2">
                   {selectedPair?.iconUrl && (
                     <img
-                      src={pairIconSrc(selectedPair.iconUrl)}
+                      src={selectedPair.iconUrl}
                       alt=""
                       width={40}
                       height={40}
@@ -1097,50 +684,37 @@ export function LaunchLive() {
                 </div>
               </div>
               <div className="flex items-center gap-6">
-                <p className="text-base tracking-[0.32px] text-[#737373]">
+                <p className="text-base tracking-[0.32px] text-muted">
                   First buy
                 </p>
                 <p className="text-xl">
                   {hasOpeningBuy
-                    ? payInEth
-                      ? `${openingAmount.trim()} ETH → ${selectedPair?.symbol ?? "token"}`
-                      : `${openingAmount.trim()} ${selectedPair?.symbol ?? ""}`.trim()
+                    ? `${openingAmount.trim()} SOL`
                     : "Skipped"}
                 </p>
               </div>
             </div>
-            <div className="mt-6 h-px bg-[#383838]" />
-            <div className="mt-6 rounded-[10px] bg-[#212121] px-6 py-5">
+            <div className="mt-6 h-px bg-surface-raised" />
+            <div className="mt-6 rounded-[10px] bg-surface-raised px-6 py-5">
               <p className="text-base">Fee distribution</p>
               <div className="mt-6 flex h-2.5 overflow-hidden rounded-full">
-                <div className="h-full w-[70%] bg-[#43e660]" />
+                <div className="h-full w-[70%] bg-positive" />
                 <div className="h-full w-[20%] bg-[#9945ff]" />
                 <div className="h-full w-[10%] bg-[#fbad15]" />
               </div>
-              <div className="mt-4 flex flex-wrap gap-3 text-xs font-medium text-[#737373]">
+              <div className="mt-4 flex flex-wrap gap-3 text-xs font-medium text-muted">
                 <Legend color="#43e660" label="Creators 70%" />
                 <Legend color="#9945ff" label="Holders 20%" />
                 <Legend color="#fbad15" label="Platform 10%" />
               </div>
             </div>
-            {fee.isError && (
-              <p className="mt-4 text-sm text-[#ffaaaa]">
-                The launch fee could not be loaded. Continue stays unavailable
-                until it is.
-              </p>
-            )}
             <StepFooter
               onBack={() => setStep(3)}
               onContinue={submit}
               continueDisabled={
-                busy ||
-                fee.isLoading ||
-                fee.isError ||
-                !pairToken ||
-                !displayName ||
-                !symbol
+                busy || !pairToken || !displayName || !symbol
               }
-              continueLabel={busy ? busyLabel : "Continue"}
+              continueLabel={busy ? busyLabel : "Launch on Raydium"}
             />
           </div>
         )}
@@ -1150,14 +724,19 @@ export function LaunchLive() {
             launch={launched}
             onClose={() => setLaunched(null)}
             onView={() => {
-              if (launched.mint) router.push(`/token/${launched.mint}`);
+              if (!launched.mint) return;
+              window.open(
+                `https://solscan.io/token/${launched.mint}`,
+                "_blank",
+                "noopener,noreferrer",
+              );
             }}
           />
         )}
         {error && (
           <p
             role="alert"
-            className="mt-5 rounded-xl border border-[#6a3030] bg-[#2a1717] p-3 text-sm text-[#ffaaaa]"
+            className="mt-5 rounded-xl border border-danger-border bg-danger-soft p-3 text-sm text-danger"
           >
             {error}
           </p>
@@ -1209,7 +788,7 @@ function ProfileFace({
           <span className="truncate">{name || handle}</span>
           {verified ? <VerifiedMark /> : null}
         </p>
-        <p className="truncate text-sm text-[#7f7f7f]">
+        <p className="truncate text-sm text-muted">
           @{handle}
           {followers != null ? ` · ${formatFollowers(followers)} followers` : ""}
         </p>
@@ -1241,7 +820,7 @@ function Avatar({
   }
   return (
     <span
-      className="flex shrink-0 items-center justify-center rounded-full bg-[#3a3a3a] text-sm font-semibold uppercase"
+      className="flex shrink-0 items-center justify-center rounded-full bg-surface-raised text-sm font-semibold uppercase"
       style={{ width: size, height: size }}
     >
       {(label || "?").slice(0, 1)}
@@ -1254,7 +833,7 @@ function PairCard({
   selected,
   onSelect,
 }: {
-  pair: PairChoice;
+  pair: LaunchPair;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -1263,12 +842,12 @@ function PairCard({
       type="button"
       onClick={onSelect}
       aria-pressed={selected}
-      className={`flex h-[79px] items-center gap-3 rounded-[10px] bg-[#212121] px-4 text-left ${
-        selected ? "border border-[#e1ff1f]" : "border border-transparent"
+      className={`flex h-[79px] items-center gap-3 rounded-[10px] bg-surface-raised px-4 text-left ${
+        selected ? "border border-accent" : "border border-transparent"
       }`}
     >
       <img
-        src={pairIconSrc(pair.iconUrl)}
+        src={pair.iconUrl}
         alt=""
         width={34}
         height={34}
@@ -1278,7 +857,7 @@ function PairCard({
         <strong className="block truncate text-base font-normal">
           {pair.symbol}
         </strong>
-        <small className="block truncate text-base text-[#7f7f7f]">
+        <small className="block truncate text-base text-muted">
           {pair.name}
         </small>
       </span>
@@ -1311,7 +890,7 @@ function StepFooter({
 }) {
   return (
     <div className="mt-8 flex items-center gap-6">
-      <button type="button" onClick={onBack} className="text-base text-white">
+      <button type="button" onClick={onBack} className="text-base text-foreground">
         Back
       </button>
       <button
@@ -1357,7 +936,7 @@ function LaunchSuccessDialog({
   const shareText = profile ? `Share with ${handle}` : `Share ${launch.name}`;
   const share = () => {
     const page = launch.mint
-      ? `${window.location.origin}/token/${launch.mint}`
+      ? `https://solscan.io/token/${launch.mint}`
       : window.location.href;
     const href = `https://x.com/intent/tweet?text=${encodeURIComponent(headline)}&url=${encodeURIComponent(page)}`;
     window.open(href, "_blank", "noopener,noreferrer");
@@ -1386,31 +965,31 @@ function LaunchSuccessDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="launch-success-title"
-        className="motion-panel relative w-full max-w-[720px] rounded-[20px] bg-[#191919] px-6 py-7 text-white shadow-[0_24px_80px_rgba(0,0,0,0.55)] sm:px-11 sm:py-8"
+        className="motion-panel relative w-full max-w-[720px] rounded-[20px] bg-surface px-6 py-7 text-foreground shadow-[0_24px_80px_rgba(0,0,0,0.55)] sm:px-11 sm:py-8"
       >
         <button
           type="button"
           aria-label="Close"
           onClick={onClose}
-          className="absolute right-4 top-4 flex size-9 items-center justify-center rounded-full text-xl text-[#8a8a8a] hover:bg-white/5 hover:text-white"
+          className="absolute right-4 top-4 flex size-9 items-center justify-center rounded-full text-xl text-muted hover:bg-foreground/5 hover:text-foreground"
         >
           ×
         </button>
         {profile ? (
-          <div className="inline-flex items-center gap-1 rounded-[5px] bg-[#212121] p-1">
+          <div className="inline-flex items-center gap-1 rounded-[5px] bg-surface-raised p-1">
             <span
-              className={`flex h-[33px] w-[118px] items-center justify-center rounded-[5px] text-base ${launch.kind === "self" ? "border border-[#e1ff1f] bg-[#ccff00] font-medium text-black" : "bg-[#383838] text-[#7f7f7f]"}`}
+              className={`flex h-[33px] w-[118px] items-center justify-center rounded-[5px] text-base ${launch.kind === "self" ? "border border-accent bg-action font-medium text-ink" : "bg-surface-raised text-muted"}`}
             >
               Self-Rove
             </span>
             <span
-              className={`flex h-[33px] w-[119px] items-center justify-center rounded-[5px] text-base ${launch.kind === "scout" ? "border border-[#e1ff1f] bg-[#ccff00] font-medium text-black" : "bg-[#383838] text-[#7f7f7f]"}`}
+              className={`flex h-[33px] w-[119px] items-center justify-center rounded-[5px] text-base ${launch.kind === "scout" ? "border border-accent bg-action font-medium text-ink" : "bg-surface-raised text-muted"}`}
             >
               Scout
             </span>
           </div>
         ) : (
-          <span className="inline-flex h-[33px] items-center justify-center rounded-[5px] border border-[#e1ff1f] bg-[#ccff00] px-5 text-base font-medium text-black">
+          <span className="inline-flex h-[33px] items-center justify-center rounded-[5px] border border-accent bg-action px-5 text-base font-medium text-ink">
             Meme
           </span>
         )}
@@ -1428,7 +1007,7 @@ function LaunchSuccessDialog({
           <span> / {launch.pair}</span>
         </p>
         <p className="mt-6 text-base tracking-[0.32px]">{stat.label}</p>
-        <p className="mt-1 text-[40px] font-bold leading-[41px] tracking-[-1.2px] text-[#ccff00]">
+        <p className="mt-1 text-[40px] font-bold leading-[41px] tracking-[-1.2px] text-accent">
           {stat.value}
         </p>
         <div className="mt-6 flex items-center justify-between gap-4">
@@ -1449,7 +1028,7 @@ function LaunchSuccessDialog({
               );
               window.setTimeout(() => setCopied(false), 1500);
             }}
-            className="shrink-0 text-base font-semibold text-[#ccff00] disabled:text-[#555]"
+            className="shrink-0 text-base font-semibold text-accent disabled:text-muted"
           >
             {copied ? "Copied" : "Copy"}
           </button>
@@ -1458,7 +1037,7 @@ function LaunchSuccessDialog({
           type="button"
           disabled={!launch.mint}
           onClick={onView}
-          className="mt-8 flex h-[53px] w-full items-center justify-center rounded-[10px] bg-[#ccff00] text-base font-semibold text-black disabled:cursor-not-allowed disabled:opacity-45"
+          className="mt-8 flex h-[53px] w-full items-center justify-center rounded-[10px] bg-action text-base font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-45"
         >
           View market
         </button>

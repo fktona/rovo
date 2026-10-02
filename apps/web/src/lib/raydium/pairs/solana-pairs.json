@@ -1,0 +1,23 @@
+[
+  {
+    "ticker": "SOL",
+    "name": "Wrapped SOL",
+    "mint": "So11111111111111111111111111111111111111112",
+    "image": "/pairs/solana/So11111111111111111111111111111111111111112.png",
+    "sourceImageUrl": "https://www.stonkfun.xyz/api/asset/quote-logo/So11111111111111111111111111111111111111112?v=2aa6de95"
+  },
+  {
+    "ticker": "SKR",
+    "name": "Seeker",
+    "mint": "SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3",
+    "image": "/pairs/solana/SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3.webp",
+    "sourceImageUrl": "https://www.stonkfun.xyz/api/asset/quote-logo/SKRbvo6Gf7GondiT3BbTfuRDPqLWei4j2Qy2NPGZhW3?v=7adcc3f3"
+  },
+  {
+    "ticker": "PSOL",
+    "name": "Phantom Staked SOL",
+    "mint": "pSo1f9nQXWgXibFtKf7NWYxb5enAM4qfP6UJSiXRQfL",
+    "image": "/pairs/solana/pSo1f9nQXWgXibFtKf7NWYxb5enAM4qfP6UJSiXRQfL.png",
+    "sourceImageUrl": "https://www.stonkfun.xyz/api/asset/quote-logo/pSo1f9nQXWgXibFtKf7NWYxb5enAM4qfP6UJSiXRQfL?v=c0666460"
+  }
+]

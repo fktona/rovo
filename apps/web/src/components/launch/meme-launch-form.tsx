@@ -1,7 +1,7 @@
-import { pairIconSrc, type PairChoice } from "@/lib/pairs";
+import type { LaunchPair } from "@/lib/raydium/pairs";
 
 const field =
-  "h-12 w-full rounded-xl border border-[#2e2e2e] bg-[#141414] px-3 text-sm text-white outline-none placeholder:text-[#6d6d6d] focus:border-[#ccff00]";
+  "h-12 w-full rounded-xl border border-line bg-surface px-3 text-sm text-foreground outline-none placeholder:text-muted focus:border-accent";
 
 type PairKind = "all" | "xstocks" | "crypto";
 
@@ -32,10 +32,7 @@ export function MemeLaunchForm({
   selectedPair,
   openingAmount,
   onOpeningAmount,
-  openingAsset,
-  onOpeningAsset,
   paySymbol,
-  payInEth,
   hasOpeningBuy,
   openingValue,
   buyPresets,
@@ -59,20 +56,17 @@ export function MemeLaunchForm({
   onTax: (value: number) => void;
   preview: string | null;
   onImage: (file: File | undefined) => void;
-  pairs: readonly PairChoice[];
+  pairs: readonly LaunchPair[];
   pairKind: PairKind;
   onPairKind: (value: PairKind) => void;
   search: string;
   onSearch: (value: string) => void;
   pairToken: string | undefined;
-  onPair: (address: PairChoice["address"]) => void;
-  selectedPair: PairChoice | undefined;
+  onPair: (mint: string) => void;
+  selectedPair: LaunchPair | undefined;
   openingAmount: string;
   onOpeningAmount: (value: string) => void;
-  openingAsset: "pair" | "eth";
-  onOpeningAsset: (value: "pair" | "eth") => void;
   paySymbol: string;
-  payInEth: boolean;
   hasOpeningBuy: boolean;
   openingValue: number;
   buyPresets: readonly string[];
@@ -80,15 +74,13 @@ export function MemeLaunchForm({
   launchLabel: string;
   onLaunch: () => void;
 }) {
-  const firstBuy = !hasOpeningBuy
-    ? "Skipped"
-    : payInEth
-      ? `${openingAmount.trim()} ETH`
-      : `${openingAmount.trim()} ${selectedPair?.symbol ?? ""}`.trim();
+  const firstBuy = hasOpeningBuy
+    ? `${openingAmount.trim()} SOL`
+    : "Skipped";
   return (
     <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
       <div className="space-y-6">
-        <label className="flex size-28 cursor-pointer items-center justify-center overflow-hidden rounded-2xl border border-dashed border-[#4a4a4a] bg-[#141414] text-center text-xs font-medium tracking-[0.04em] text-[#8a8a8a]">
+        <label className="flex size-28 cursor-pointer items-center justify-center overflow-hidden rounded-2xl border border-dashed border-line bg-surface text-center text-xs font-medium tracking-[0.04em] text-muted">
           {preview ? (
             <img src={preview} alt="" className="size-full object-cover" />
           ) : (
@@ -137,9 +129,9 @@ export function MemeLaunchForm({
         <div>
           <div className="flex items-baseline justify-between">
             <p className="text-sm font-medium">Creator tax</p>
-            <p className="text-sm text-[#ccff00]">{tax.toFixed(1)}%</p>
+            <p className="text-sm text-accent">{tax.toFixed(1)}%</p>
           </div>
-          <p className="mt-1 text-xs leading-5 text-[#7f7f7f]">
+          <p className="mt-1 text-xs leading-5 text-muted">
             Optional. An admin claims this with the scout and profile fees.
           </p>
           <input
@@ -150,14 +142,14 @@ export function MemeLaunchForm({
             value={tax}
             aria-label="Creator tax"
             onChange={(event) => onTax(Number(event.target.value))}
-            className="mt-3 w-full accent-[#ccff00]"
+            className="mt-3 w-full accent-accent"
           />
         </div>
 
         <div>
           <p className="text-sm font-medium">Paired with</p>
           <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex h-11 items-center gap-2 rounded-xl bg-[#141414] px-2">
+            <div className="flex h-11 items-center gap-2 rounded-xl bg-surface px-2">
               {(
                 [
                   ["all", "All"],
@@ -172,8 +164,8 @@ export function MemeLaunchForm({
                   onClick={() => onPairKind(value)}
                   className={`h-8 rounded-lg px-3 text-sm ${
                     pairKind === value
-                      ? "bg-[#ccff00] font-medium text-black"
-                      : "text-[#7f7f7f]"
+                      ? "bg-action font-medium text-ink"
+                      : "text-muted"
                   }`}
                 >
                   {label}
@@ -190,19 +182,19 @@ export function MemeLaunchForm({
           </div>
           <div className="mt-3 grid max-h-64 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
             {pairs.map((pair) => {
-              const selected = pairToken?.toLowerCase() === pair.address.toLowerCase();
+              const selected = pairToken === pair.mint;
               return (
                 <button
-                  key={pair.address}
+                  key={pair.mint}
                   type="button"
                   aria-pressed={selected}
-                  onClick={() => onPair(pair.address)}
-                  className={`flex h-16 items-center gap-3 rounded-xl bg-[#141414] px-3 text-left ${
-                    selected ? "border border-[#ccff00]" : "border border-transparent"
+                  onClick={() => onPair(pair.mint)}
+                  className={`flex h-16 items-center gap-3 rounded-xl bg-surface px-3 text-left ${
+                    selected ? "border border-accent" : "border border-transparent"
                   }`}
                 >
                   <img
-                    src={pairIconSrc(pair.iconUrl)}
+                    src={pair.iconUrl}
                     alt=""
                     width={28}
                     height={28}
@@ -210,48 +202,22 @@ export function MemeLaunchForm({
                   />
                   <span className="min-w-0">
                     <strong className="block truncate text-sm font-medium">{pair.symbol}</strong>
-                    <small className="block truncate text-xs text-[#7f7f7f]">{pair.name}</small>
+                    <small className="block truncate text-xs text-muted">{pair.name}</small>
                   </span>
                 </button>
               );
             })}
           </div>
           {pairs.length === 0 && (
-            <p className="mt-3 text-sm text-[#7f7f7f]">No pair tokens match.</p>
+            <p className="mt-3 text-sm text-muted">No pair tokens match.</p>
           )}
         </div>
 
         <div>
           <p className="text-sm font-medium">Initial buy</p>
-          <p className="mt-1 text-xs text-[#7f7f7f]">
-            {pairToken
-              ? "Optional. Pay with ETH or the pair token."
-              : "Select a pair first."}
+          <p className="mt-1 text-xs text-muted">
+            Optional first buy in SOL. If the pair is not SOL, Raydium swaps SOL into that token before the launch.
           </p>
-          {pairToken && pairToken !== "0x0000000000000000000000000000000000000000" && (
-            <div className="mt-3 flex h-11 w-fit items-center gap-2 rounded-xl bg-[#141414] px-2">
-              {(
-                [
-                  ["eth", "ETH"],
-                  ["pair", selectedPair?.symbol ?? "Token"],
-                ] as const
-              ).map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  aria-pressed={openingAsset === value}
-                  onClick={() => onOpeningAsset(value)}
-                  className={`h-8 rounded-lg px-3 text-sm ${
-                    openingAsset === value
-                      ? "bg-[#ccff00] font-medium text-black"
-                      : "text-[#7f7f7f]"
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          )}
           <input
             value={openingAmount}
             onChange={(event) => onOpeningAmount(event.target.value)}
@@ -273,8 +239,8 @@ export function MemeLaunchForm({
                   onClick={() => onOpeningAmount(amount)}
                   className={`h-10 rounded-xl border px-3 text-sm disabled:opacity-40 ${
                     selected
-                      ? "border-[#ccff00] text-white"
-                      : "border-[#2e2e2e] text-[#7f7f7f]"
+                      ? "border-accent text-foreground"
+                      : "border-line text-muted"
                   }`}
                 >
                   {amount}
@@ -285,19 +251,19 @@ export function MemeLaunchForm({
         </div>
       </div>
 
-      <aside className="rounded-[20px] border border-[#2e2e2e] bg-[#141414] p-5 lg:sticky lg:top-6">
-        <p className="text-sm font-medium text-[#8a8a8a]">Launch summary</p>
+      <aside className="rounded-[20px] border border-line bg-surface p-5 lg:sticky lg:top-6">
+        <p className="text-sm font-medium text-muted">Launch summary</p>
         <div className="mt-4 flex items-center gap-3">
           {preview ? (
             <img src={preview} alt="" className="size-14 rounded-xl object-cover" />
           ) : (
-            <span className="flex size-14 items-center justify-center rounded-xl border border-dashed border-[#4a4a4a] text-[10px] text-[#6d6d6d]">
+            <span className="flex size-14 items-center justify-center rounded-xl border border-dashed border-line text-[10px] text-muted">
               Image
             </span>
           )}
           <div className="min-w-0">
             <p className="truncate text-lg font-semibold">{name.trim() || "Untitled"}</p>
-            <p className="truncate text-sm text-[#7f7f7f]">{symbol.trim() || "No ticker yet"}</p>
+            <p className="truncate text-sm text-muted">{symbol.trim() || "No ticker yet"}</p>
           </div>
         </div>
         <dl className="mt-5 space-y-3 text-sm">
@@ -306,14 +272,14 @@ export function MemeLaunchForm({
           {/* <SummaryRow label="Tax destination" value="Admin treasury" /> */}
           <SummaryRow label="First buy" value={firstBuy} />
         </dl>
-        <p className="mt-4 text-xs leading-5 text-[#6d6d6d]">
+        <p className="mt-4 text-xs leading-5 text-muted">
           The image uploads to Pinata when you launch, not when you add it.
         </p>
         <button
           type="button"
           disabled={busy}
           onClick={onLaunch}
-          className="mt-5 flex h-12 w-full items-center justify-center rounded-xl bg-[#ccff00] text-sm font-semibold text-black disabled:cursor-not-allowed disabled:opacity-45"
+          className="mt-5 flex h-12 w-full items-center justify-center rounded-xl bg-action text-sm font-semibold text-ink disabled:cursor-not-allowed disabled:opacity-45"
         >
           {launchLabel}
         </button>
@@ -325,7 +291,7 @@ export function MemeLaunchForm({
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-center justify-between gap-4">
-      <dt className="text-[#7f7f7f]">{label}</dt>
+      <dt className="text-muted">{label}</dt>
       <dd className="truncate font-medium">{value}</dd>
     </div>
   );

@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import { PrivyProvider, type PrivyClientConfig } from "@privy-io/react-auth";
+import { toSolanaWalletConnectors } from "@privy-io/react-auth/solana";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RovoApiClient } from "../lib/api";
 import {
@@ -78,6 +79,15 @@ export function RovoProviders({
           PrivyClientConfig["defaultChain"]
         >,
         loginMethods: ["wallet", "twitter", "email" , "google"],
+        appearance: {
+          walletChainType: "ethereum-and-solana",
+        },
+        externalWallets: {
+          solana: { connectors: toSolanaWalletConnectors() },
+        },
+        embeddedWallets: {
+          solana: { createOnLogin: "users-without-wallets" },
+        },
       }}
     >
       {app}

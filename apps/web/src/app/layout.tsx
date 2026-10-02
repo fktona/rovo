@@ -1,7 +1,15 @@
 import type { Metadata } from "next";
+import localFont from "next/font/local";
 import { AppShell } from "@/components/shell/app-shell";
 import { RovoProviders } from "@/providers/RovoProviders";
 import "./globals.css";
+
+const manrope = localFont({
+  src: "./fonts/Manrope.ttf",
+  variable: "--font-manrope",
+  weight: "200 800",
+  display: "swap",
+});
 
 const description = "Make a market around a profile. Launch, scout, and trade profile tokens on Robinhood Chain.";
 
@@ -39,11 +47,11 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" className={manrope.variable} suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var t=localStorage.getItem("rovo-theme");if(t!=="light"&&t!=="dark"){t=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"}document.documentElement.dataset.theme=t}catch(e){}})();`,
+            __html: `(function(){try{var t=localStorage.getItem("rovo-solana-theme");if(t!=="light"&&t!=="dark"){t="light"}document.documentElement.dataset.theme=t}catch(e){}})();`,
           }}
         />
       </head>

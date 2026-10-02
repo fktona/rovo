@@ -300,6 +300,45 @@ describe("Rovo API", () => {
     expect(JSON.stringify(savedResponse.json())).not.toContain("access-token-value-ok");
   });
 
+  it("returns n/a until an admin saves the Rovo token address", async () => {
+    let address: typeof token | null = null;
+    const app = buildServer({
+      repository: new MemoryRovoRepository(),
+      identityVerifier: { async verify() { throw new Error("unused"); } },
+      attestationService: {
+        async issueSelfRove() { throw new Error("unused"); },
+        async issueScout() { throw new Error("unused"); },
+        async issueClaim() { throw new Error("unused"); },
+      } as unknown as Pick<IdentityAttestationService, "issueSelfRove" | "issueScout" | "issueClaim">,
+      authorizeAdmin: async (accessToken, selectedWallet) => {
+        if (accessToken !== "valid" || selectedWallet !== wallet) throw new Error("no");
+      },
+      getRovoToken: async () => address,
+      setRovoToken: async (next) => {
+        address = next;
+      },
+    });
+    const empty = await app.inject({ method: "GET", url: "/v1/rovo-token" });
+    expect(empty.statusCode).toBe(200);
+    expect(empty.json()).toEqual({ address: null });
+    const missing = await app.inject({
+      method: "POST",
+      url: "/v1/admin/rovo-token",
+      payload: { wallet, address: token },
+    });
+    expect(missing.statusCode).toBe(401);
+    const saved = await app.inject({
+      method: "POST",
+      url: "/v1/admin/rovo-token",
+      headers: { authorization: "Bearer valid" },
+      payload: { wallet, address: token },
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json()).toEqual({ updated: true, address: token });
+    const filled = await app.inject({ method: "GET", url: "/v1/rovo-token" });
+    expect(filled.json()).toEqual({ address: token });
+  });
+
   it("requires a valid Privy bearer token", async () => {
     const app = fixture();
     expect(

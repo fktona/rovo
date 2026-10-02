@@ -195,6 +195,15 @@ export class RovoApiClient {
       { signal },
     );
   }
+  rovoToken(signal?: AbortSignal) {
+    return this.request<{ address: Address | null }>("/v1/rovo-token", { signal });
+  }
+  updateRovoToken(token: string, wallet: Address, address: Address) {
+    return this.request<{ updated: true; address: Address }>("/v1/admin/rovo-token", {
+      token,
+      body: { wallet: asAddress(wallet), address: asAddress(address) },
+    });
+  }
   updateXTokens(token: string, wallet: Address, accessToken: string, refreshToken: string) {
     return this.request<{ updated: true; expiresAt: string }>("/v1/admin/x-tokens", {
       token,

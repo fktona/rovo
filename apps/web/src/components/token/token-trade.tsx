@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { parseUnits, zeroAddress, type Address } from "viem";
+import { isAddress, parseUnits, zeroAddress, type Address } from "viem";
 import { useRovoIdentity } from "@/hooks/useRovoIdentity";
 import { useRovoActions } from "@/hooks/useRovoActions";
 import {
@@ -46,7 +46,7 @@ function slippageBps(value: string) {
 }
 
 export function TokenTradePanel({ token }: { token: string }) {
-  const address = token as Address;
+  const address = isAddress(token) ? (token as Address) : undefined;
   const { publicClient } = useRovoContext();
   const queryClient = useQueryClient();
   const identity = useRovoIdentity();
@@ -95,7 +95,7 @@ export function TokenTradePanel({ token }: { token: string }) {
     queryKey: [
       "rovo",
       "curve-quote",
-      address.toLowerCase(),
+      address?.toLowerCase() ?? token,
       curve,
       side,
       payingEth,
@@ -110,6 +110,7 @@ export function TokenTradePanel({ token }: { token: string }) {
       bps != null &&
       (onCurve ? !!curve : onUniswap),
     queryFn: async () => {
+      if (!address) throw new Error("This token is still loading.");
       const recipient = wallet ?? PREVIEW_RECIPIENT;
       if (onUniswap) {
         if (!launch.data) throw new Error("This token is still loading.");
@@ -209,7 +210,7 @@ export function TokenTradePanel({ token }: { token: string }) {
       identity.connectOrCreateWallet();
       return;
     }
-    if (!actions || !pairToken || !amountIn || bps == null || closed) return;
+    if (!actions || !address || !pairToken || !amountIn || bps == null || closed) return;
     if (!onUniswap && !curve) return;
     setBusy(needsApproval && !payingEth ? "Approving…" : "Confirming…");
     try {
@@ -325,6 +326,24 @@ export function TokenTradePanel({ token }: { token: string }) {
               ? "Buy"
               : "Sell";
 
+  if (!address) {
+    return (
+      <section className="rounded-[20px] border border-line bg-surface p-5">
+        <p className="text-sm leading-6 text-muted">
+          This token trades on Raydium. Open it on Solscan to buy or sell.
+        </p>
+        <a
+          className="mt-3 inline-block text-sm font-semibold text-accent"
+          href={`https://solscan.io/token/${token}`}
+          target="_blank"
+          rel="noreferrer"
+        >
+          View on Solscan
+        </a>
+      </section>
+    );
+  }
+
   return (
     <div>
       <div className="flex items-center justify-center gap-8">
@@ -339,9 +358,9 @@ export function TokenTradePanel({ token }: { token: string }) {
             }}
             className={`h-7 w-28 rounded-[10px] text-xs font-medium capitalize ${
               side === value
-                ? "border border-[#383838] bg-[#212121]"
+                ? "border border-line bg-surface-raised"
                 : ""
-            } ${value === "buy" ? "text-[#43e660]" : "text-[red]"}`}
+            } ${value === "buy" ? "text-positive" : "text-danger"}`}
           >
             {value}
           </button>
@@ -360,8 +379,8 @@ export function TokenTradePanel({ token }: { token: string }) {
               }}
               className={`h-8 rounded-lg px-3 text-xs ${
                 (value === "eth" ? payingEth : !payingEth)
-                  ? "bg-[#ccff00] font-semibold text-black"
-                  : "border border-[#383838] text-[#aaa]"
+                  ? "bg-action font-semibold text-ink"
+                  : "border border-line text-muted"
               }`}
             >
               {value === "eth" ? "ETH" : pairSymbol}
@@ -369,16 +388,16 @@ export function TokenTradePanel({ token }: { token: string }) {
           ))}
         </div>
       )}
-      <label className="mt-4 block rounded-[10px] bg-[#212121] px-3 py-2">
+      <label className="mt-4 block rounded-[10px] bg-surface-raised px-3 py-2">
         <span className="text-sm font-medium">Amount</span>
-        <span className="mt-1 flex items-center gap-2 text-sm text-white">
+        <span className="mt-1 flex items-center gap-2 text-sm text-foreground">
           <input
             value={amount}
             onChange={(event) => setAmount(event.target.value)}
             inputMode="decimal"
             placeholder="0.00"
             aria-label={`Amount in ${inputSymbol}`}
-            className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-[#666]"
+            className="min-w-0 flex-1 bg-transparent outline-none placeholder:text-muted"
           />
           {inputSymbol}
         </span>
@@ -390,7 +409,7 @@ export function TokenTradePanel({ token }: { token: string }) {
               key={value}
               type="button"
               onClick={() => setAmount(value)}
-              className="rounded-[5px] border border-[#383838] bg-[#212121] px-3 py-1.5 text-[10px] font-medium text-[#666]"
+              className="rounded-[5px] border border-line bg-surface-raised px-3 py-1.5 text-[10px] font-medium text-muted"
             >
               {value} {inputSymbol}
             </button>
@@ -402,12 +421,12 @@ export function TokenTradePanel({ token }: { token: string }) {
             if (balance.data == null) return;
             setAmount(formatQuoteAmount(balance.data, inputDecimals));
           }}
-          className="rounded-[5px] border border-[#383838] bg-[#212121] px-3 py-1.5 text-[10px] font-medium text-[#666]"
+          className="rounded-[5px] border border-line bg-surface-raised px-3 py-1.5 text-[10px] font-medium text-muted"
         >
           MAX
         </button>
       </div>
-      <label className="mt-4 block text-xs text-[#888]">
+      <label className="mt-4 block text-xs text-muted">
         Slippage
         <span className="mt-2 flex flex-wrap items-center gap-2">
           {SLIPPAGE_PRESETS.map((value) => (
@@ -417,7 +436,7 @@ export function TokenTradePanel({ token }: { token: string }) {
               aria-pressed={slippage === value}
               onClick={() => setSlippage(value)}
               className={`h-7 rounded-md px-2 ${
-                slippage === value ? "bg-[#ccff00] font-semibold text-black" : "bg-[#212121] text-[#aaa]"
+                slippage === value ? "bg-action font-semibold text-ink" : "bg-surface-raised text-muted"
               }`}
             >
               {value}%
@@ -428,12 +447,12 @@ export function TokenTradePanel({ token }: { token: string }) {
             onChange={(event) => setSlippage(event.target.value)}
             inputMode="decimal"
             aria-label="Custom slippage percent"
-            className="h-7 w-16 rounded-md bg-[#212121] px-2 text-white outline-none"
+            className="h-7 w-16 rounded-md bg-surface-raised px-2 text-foreground outline-none"
           />
           <span>%</span>
         </span>
       </label>
-      <p className="mt-4 text-sm text-[#aaa]">
+      <p className="mt-4 text-sm text-muted">
         {quote.isFetching && amountIn
           ? "Quoting…"
           : quote.isError
@@ -447,16 +466,16 @@ export function TokenTradePanel({ token }: { token: string }) {
                 : "Enter an amount to quote the curve."}
       </p>
       {balance.data != null && (
-        <p className="mt-1 text-xs text-[#777]">
+        <p className="mt-1 text-xs text-muted">
           Balance {formatQuoteAmount(balance.data, inputDecimals)} {inputSymbol}
         </p>
       )}
-      {closed && <p className="mt-3 text-sm text-[#ffca77]">{closed}</p>}
+      {closed && <p className="mt-3 text-sm text-warning">{closed}</p>}
       <button
         type="button"
         disabled={!!busy || (!!wallet && (!!closed || bps == null || (!!amountIn && quote.data?.receive === 0n)))}
         onClick={() => void submit()}
-        className="mt-4 flex h-[42px] w-full items-center justify-center rounded-lg bg-[#e1ff1f] text-sm font-semibold text-black disabled:opacity-45"
+        className="mt-4 flex h-[42px] w-full items-center justify-center rounded-lg bg-action text-sm font-semibold text-ink disabled:opacity-45"
       >
         {buttonLabel}
       </button>

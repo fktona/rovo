@@ -25,8 +25,12 @@ steps:
       - --build-arg
       - NEXT_PUBLIC_ROVO_HOLDER_REWARDS_ADDRESS=$_HOLDER_REWARDS
       - -t
-      - us-central1-docker.pkg.dev/$PROJECT_ID/rovo/web:latest
+      - us-central1-docker.pkg.dev/$PROJECT_ID/rovo/web:$BUILD_ID
       - .
+  - name: gcr.io/cloud-builders/docker
+    args:
+      - push
+      - us-central1-docker.pkg.dev/$PROJECT_ID/rovo/web:$BUILD_ID
   - name: gcr.io/google.com/cloudsdktool/cloud-sdk
     entrypoint: gcloud
     args:
@@ -36,9 +40,7 @@ steps:
       - rovo-web
       - --project=$PROJECT_ID
       - --region=us-central1
-      - --image=us-central1-docker.pkg.dev/$PROJECT_ID/rovo/web:latest
-images:
-  - us-central1-docker.pkg.dev/$PROJECT_ID/rovo/web:latest
+      - --image=us-central1-docker.pkg.dev/$PROJECT_ID/rovo/web:$BUILD_ID
 options:
   logging: CLOUD_LOGGING_ONLY
 substitutions:

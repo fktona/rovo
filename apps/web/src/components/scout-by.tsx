@@ -6,8 +6,8 @@ export function ScoutedBy({ scout }: { scout: ScoutProfile }) {
   const face = (
     <>
       <ScoutAvatar src={scout.imageUrl} label={name} />
-      <span className="text-xs text-[#8a8a8a]">Scouted by</span>
-      <span className="truncate text-sm font-medium text-white">{name}</span>
+      <span className="text-xs text-muted">Scouted by</span>
+      <span className="truncate text-sm font-medium text-foreground">{name}</span>
     </>
   );
   const className = "inline-flex min-w-0 max-w-full items-center gap-2 active:opacity-70";
@@ -43,7 +43,7 @@ function ScoutAvatar({ src, label }: { src: string | null; label: string }) {
     );
   }
   return (
-    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-[#2a2a2a] text-[11px] font-semibold uppercase">
+    <span className="flex size-6 shrink-0 items-center justify-center rounded-full bg-surface-raised text-[11px] font-semibold uppercase">
       {label.replace(/^@/, "").slice(0, 1) || "?"}
     </span>
   );

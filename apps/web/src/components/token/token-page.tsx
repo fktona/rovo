@@ -24,7 +24,7 @@ function profileStats(data: ReturnType<typeof useTokenPageData>) {
     {
       label: "24h change",
       value: data.changeLabel,
-      tone: data.changeUp ? "text-[#00e829]" : "text-[red]",
+      tone: data.changeUp ? "text-positive" : "text-danger",
     },
   ];
 }
@@ -53,7 +53,7 @@ function MobileTokenPage({
   }, [sheetOpen]);
 
   return (
-    <main className="min-h-full bg-black px-4 pb-28 text-white md:hidden">
+    <main className="min-h-full bg-canvas px-4 pb-28 text-foreground md:hidden">
       <div className="pt-3">
         <TokenProfileCard
           token={token}
@@ -70,7 +70,7 @@ function MobileTokenPage({
 
       <section
         aria-label="Token chart"
-        className="mt-6 overflow-hidden rounded-2xl border border-[#383838] bg-[#141414] p-3"
+        className="mt-6 overflow-hidden rounded-2xl border border-line bg-surface p-3"
       >
         <TokenPriceChart
           points={data.points}
@@ -92,7 +92,7 @@ function MobileTokenPage({
             role="tab"
             aria-selected={range === value}
             onClick={() => onRange(value)}
-            className={`min-h-10 min-w-12 rounded-lg px-2 text-sm ${range === value ? "bg-[#252525] font-semibold text-[#ccff00]" : "text-[#888]"}`}
+            className={`min-h-10 min-w-12 rounded-lg px-2 text-sm ${range === value ? "bg-surface-raised font-semibold text-accent" : "text-muted"}`}
           >
             {value}
           </button>
@@ -107,14 +107,14 @@ function MobileTokenPage({
           ["PAIR", data.pairLabel],
         ].map(([label, value]) => (
           <div key={label} className="min-w-0">
-            <dt className="text-[10px] font-medium text-[#888]">{label}</dt>
+            <dt className="text-[10px] font-medium text-muted">{label}</dt>
             <dd className="mt-1 truncate text-sm font-bold">{value}</dd>
           </div>
         ))}
       </dl>
 
       <div
-        className="mt-8 flex gap-6 overflow-x-auto border-b border-[#383838] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="mt-8 flex gap-6 overflow-x-auto border-b border-line [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         role="tablist"
         aria-label="Token information"
       >
@@ -126,7 +126,7 @@ function MobileTokenPage({
               role="tab"
               aria-selected={tab === value}
               onClick={() => setTab(value)}
-              className={`relative min-h-12 shrink-0 text-sm ${tab === value ? "text-white after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-[#ccff00]" : "text-[#888]"}`}
+              className={`relative min-h-12 shrink-0 text-sm ${tab === value ? "text-foreground after:absolute after:inset-x-0 after:bottom-0 after:h-0.5 after:bg-action" : "text-muted"}`}
             >
               {value}
             </button>
@@ -145,9 +145,9 @@ function MobileTokenPage({
             ].map(([label, value], index) => (
               <div
                 key={label}
-                className={`flex min-h-14 items-center justify-between gap-3 rounded-xl px-3 ${index % 2 === 0 ? "bg-[#1c1c1c]" : ""}`}
+                className={`flex min-h-14 items-center justify-between gap-3 rounded-xl px-3 ${index % 2 === 0 ? "bg-surface" : ""}`}
               >
-                <span className="text-[#888]">{label}</span>
+                <span className="text-muted">{label}</span>
                 <span className="truncate text-right font-medium">{value}</span>
               </div>
             ))}
@@ -155,18 +155,18 @@ function MobileTokenPage({
         ) : tab === "Holders" ? (
           <div className="mt-4">
             {data.holdersLoading ? (
-              <p className="py-8 text-center text-sm text-[#888]">Loading holders…</p>
+              <p className="py-8 text-center text-sm text-muted">Loading holders…</p>
             ) : data.holders.length === 0 ? (
-              <p className="py-8 text-center text-sm text-[#888]">No holders yet.</p>
+              <p className="py-8 text-center text-sm text-muted">No holders yet.</p>
             ) : (
               data.holders.map((holder) => (
                 <div
                   key={holder.rank}
-                  className="flex min-h-14 items-center justify-between border-b border-[#252525] text-sm"
+                  className="flex min-h-14 items-center justify-between border-b border-line text-sm"
                 >
-                  <span className="text-[#888]">{holder.rank}</span>
+                  <span className="text-muted">{holder.rank}</span>
                   <span>{holder.wallet}</span>
-                  <span className="text-[#ccff00]">{holder.share}</span>
+                  <span className="text-accent">{holder.share}</span>
                 </div>
               ))
             )}
@@ -174,25 +174,25 @@ function MobileTokenPage({
         ) : (
           <div className="mt-4">
             {data.tradesLoading ? (
-              <p className="py-8 text-center text-sm text-[#888]">Loading trades…</p>
+              <p className="py-8 text-center text-sm text-muted">Loading trades…</p>
             ) : data.trades.length === 0 ? (
-              <p className="py-8 text-center text-sm text-[#888]">No trades yet.</p>
+              <p className="py-8 text-center text-sm text-muted">No trades yet.</p>
             ) : (
               data.trades.map((trade) => (
                 <div
                   key={trade.id}
-                  className="flex min-h-14 items-center gap-3 border-b border-[#252525] text-sm"
+                  className="flex min-h-14 items-center gap-3 border-b border-line text-sm"
                 >
                   <span className="min-w-0 flex-1 truncate">{trade.wallet}</span>
                   <span
                     className={
-                      trade.side === "Buy" ? "text-[#39d353]" : "text-[#ff4edc]"
+                      trade.side === "Buy" ? "text-positive" : "text-[#ff4edc]"
                     }
                   >
                     {trade.side}
                   </span>
-                  <span className="w-16 text-right text-[#aaa]">{trade.usd}</span>
-                  <span className="w-8 text-right text-[#777]">{trade.time}</span>
+                  <span className="w-16 text-right text-muted">{trade.usd}</span>
+                  <span className="w-8 text-right text-muted">{trade.time}</span>
                 </div>
               ))
             )}
@@ -200,11 +200,11 @@ function MobileTokenPage({
         )}
       </div>
 
-      <div className="fixed inset-x-0 bottom-[68px] z-20 bg-black px-4 py-3 md:hidden">
+      <div className="fixed inset-x-0 bottom-[68px] z-20 bg-canvas px-4 py-3 md:hidden">
         <button
           type="button"
           onClick={() => setSheetOpen(true)}
-          className="h-12 w-full rounded-full bg-[#ccff00] text-base font-semibold text-black"
+          className="h-12 w-full rounded-full bg-action text-base font-semibold text-ink"
         >
           Trade
         </button>
@@ -220,14 +220,14 @@ function MobileTokenPage({
           aria-modal="true"
           aria-label="Trade"
           onClick={(event) => event.stopPropagation()}
-          className="motion-panel w-full rounded-t-[28px] border-t border-[#383838] bg-[#191919] px-4 pb-[calc(24px+env(safe-area-inset-bottom))] pt-5 text-white"
+          className="motion-panel w-full rounded-t-[28px] border-t border-line bg-surface px-4 pb-[calc(24px+env(safe-area-inset-bottom))] pt-5 text-foreground"
         >
           <div className="mb-4 flex items-center">
             <button
               type="button"
               aria-label="Close trade sheet"
               onClick={() => setSheetOpen(false)}
-              className="ml-auto size-10 text-xl text-[#aaa]"
+              className="ml-auto size-10 text-xl text-muted"
             >
               ×
             </button>
@@ -261,26 +261,26 @@ export function TokenPage({ token }: { token: string }) {
         />
 
         <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_347px]">
-          <section className="rounded-[20px] bg-[#191919] p-4 sm:p-6">
+          <section className="rounded-[20px] bg-surface p-4 sm:p-6">
             <div className="flex items-center gap-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={asset("chart.svg")} alt="" />
               <h2 className="text-xl font-bold tracking-tight">Live market</h2>
             </div>
-            <div className="mt-4 flex gap-3 overflow-x-auto text-base font-medium tracking-[0.32px] text-[#737373]">
+            <div className="mt-4 flex gap-3 overflow-x-auto text-base font-medium tracking-[0.32px] text-muted">
               {CHART_RANGES.map((item) => (
                 <button
                   key={item}
                   type="button"
                   aria-pressed={range === item}
                   onClick={() => setRange(item)}
-                  className={`shrink-0 rounded-[10px] px-3 py-1 ${range === item ? "bg-[#212121]" : ""}`}
+                  className={`shrink-0 rounded-[10px] px-3 py-1 ${range === item ? "bg-surface-raised" : ""}`}
                 >
                   {item}
                 </button>
               ))}
             </div>
-            <div className="relative mt-4 overflow-hidden rounded-[11px] bg-[#191919]">
+            <div className="relative mt-4 overflow-hidden rounded-[11px] bg-surface">
               <TokenPriceChart
                 points={data.points}
                 quoteUsd={data.quoteUsd}
@@ -292,14 +292,14 @@ export function TokenPage({ token }: { token: string }) {
           </section>
 
           <div className="flex flex-col gap-5">
-            <section className="rounded-[20px] bg-[#191919] p-5">
+            <section className="rounded-[20px] bg-surface p-5">
               <TokenTradePanel token={token} />
             </section>
-            <section className="flex items-center justify-between rounded-[10px] bg-[#191919] px-6 py-5">
-              <p className="text-base font-medium tracking-[0.32px] text-[#737373]">
+            <section className="flex items-center justify-between rounded-[10px] bg-surface px-6 py-5">
+              <p className="text-base font-medium tracking-[0.32px] text-muted">
                 Paired with
               </p>
-              <p className="flex items-center gap-2 text-xl text-white">
+              <p className="flex items-center gap-2 text-xl text-foreground">
                 {data.pairIcon && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -318,20 +318,20 @@ export function TokenPage({ token }: { token: string }) {
 
         {(hasEarnings(data.creatorEarnings) || hasEarnings(data.holderEarnings)) && (
           <section>
-            <h2 className="mb-3 text-base font-medium tracking-[0.32px] text-[#737373]">
+            <h2 className="mb-3 text-base font-medium tracking-[0.32px] text-muted">
               Creator Earnings
             </h2>
-            <div className="grid max-w-md grid-cols-2 rounded-[10px] bg-[#191919] py-4">
+            <div className="grid max-w-md grid-cols-2 rounded-[10px] bg-surface py-4">
               <div className="px-6">
-                <p className="text-xs font-medium tracking-[0.24px] text-[#737373]">
+                <p className="text-xs font-medium tracking-[0.24px] text-muted">
                   Lifetime
                 </p>
                 <p className="mt-2 text-[23px] font-bold tracking-tight">
                   {data.creatorEarnings ?? "—"}
                 </p>
               </div>
-              <div className="border-l border-[#383838] px-6">
-                <p className="text-xs font-medium tracking-[0.24px] text-[#737373]">
+              <div className="border-l border-line px-6">
+                <p className="text-xs font-medium tracking-[0.24px] text-muted">
                   Holders
                 </p>
                 <p className="mt-2 text-[23px] font-bold tracking-tight">
@@ -342,13 +342,13 @@ export function TokenPage({ token }: { token: string }) {
           </section>
         )}
 
-        <section className="rounded-[10px] bg-[#191919] p-4 sm:p-6">
+        <section className="rounded-[10px] bg-surface p-4 sm:p-6">
           <div className="flex items-center gap-5">
             <button
               type="button"
               aria-pressed={panel === "holders"}
               onClick={() => setPanel("holders")}
-              className={`text-base font-medium tracking-[0.32px] ${panel === "holders" ? "text-white" : "text-[#737373]"}`}
+              className={`text-base font-medium tracking-[0.32px] ${panel === "holders" ? "text-foreground" : "text-muted"}`}
             >
               Top Holders
             </button>
@@ -358,8 +358,8 @@ export function TokenPage({ token }: { token: string }) {
               onClick={() => setPanel("trades")}
               className={`h-7 rounded-[7px] border px-6 text-sm font-medium tracking-tight ${
                 panel === "trades"
-                  ? "border-[#e1ff1f] bg-[#212121] text-white"
-                  : "border-transparent text-[#737373]"
+                  ? "border-accent bg-surface-raised text-foreground"
+                  : "border-transparent text-muted"
               }`}
             >
               Trades
@@ -368,7 +368,7 @@ export function TokenPage({ token }: { token: string }) {
           <div key={panel} className="motion-content mt-6 overflow-x-auto">
             {panel === "trades" ? (
               <table className="w-full min-w-[36rem] border-separate border-spacing-y-4 text-left text-[13px] font-medium">
-                <thead className="text-[#737373]">
+                <thead className="text-muted">
                   <tr>
                     {["Time", "Type", "USD", "ETH", "MCAP", "Wallet"].map(
                       (label) => (
@@ -382,22 +382,22 @@ export function TokenPage({ token }: { token: string }) {
                 <tbody>
                   {data.tradesLoading ? (
                     <tr>
-                      <td className="px-3 text-[#737373]" colSpan={6}>
+                      <td className="px-3 text-muted" colSpan={6}>
                         Loading trades…
                       </td>
                     </tr>
                   ) : data.trades.length === 0 ? (
                     <tr>
-                      <td className="px-3 text-[#737373]" colSpan={6}>
+                      <td className="px-3 text-muted" colSpan={6}>
                         No trades yet.
                       </td>
                     </tr>
                   ) : (
                     data.trades.map((trade) => (
-                      <tr key={trade.id} className="text-white">
+                      <tr key={trade.id} className="text-foreground">
                         <td className="px-3">{trade.time}</td>
                         <td
-                          className={`px-3 ${trade.side === "Buy" ? "text-[#00e829]" : "text-[red]"}`}
+                          className={`px-3 ${trade.side === "Buy" ? "text-positive" : "text-danger"}`}
                         >
                           {trade.side}
                         </td>
@@ -420,7 +420,7 @@ export function TokenPage({ token }: { token: string }) {
               </table>
             ) : (
               <table className="w-full min-w-[24rem] border-separate border-spacing-y-4 text-left text-[13px] font-medium">
-                <thead className="text-[#737373]">
+                <thead className="text-muted">
                   <tr>
                     {["Rank", "Wallet", "Share"].map((label) => (
                       <th key={label} className="px-3 font-medium">
@@ -432,19 +432,19 @@ export function TokenPage({ token }: { token: string }) {
                 <tbody>
                   {data.holdersLoading ? (
                     <tr>
-                      <td className="px-3 text-[#737373]" colSpan={3}>
+                      <td className="px-3 text-muted" colSpan={3}>
                         Loading holders…
                       </td>
                     </tr>
                   ) : data.holders.length === 0 ? (
                     <tr>
-                      <td className="px-3 text-[#737373]" colSpan={3}>
+                      <td className="px-3 text-muted" colSpan={3}>
                         No holders yet.
                       </td>
                     </tr>
                   ) : (
                     data.holders.map((holder) => (
-                      <tr key={holder.rank} className="text-white">
+                      <tr key={holder.rank} className="text-foreground">
                         <td className="px-3">{holder.rank}</td>
                         <td className="px-3">
                           {holder.href ? (
@@ -465,9 +465,9 @@ export function TokenPage({ token }: { token: string }) {
           </div>
         </section>
 
-        <section className="rounded-[10px] bg-[#212121] px-6 py-4">
-          <h2 className="text-base text-white">How fees work</h2>
-          <p className="mt-3 max-w-md text-sm font-medium text-[#737373]">
+        <section className="rounded-[10px] bg-surface-raised px-6 py-4">
+          <h2 className="text-base text-foreground">How fees work</h2>
+          <p className="mt-3 max-w-md text-sm font-medium text-muted">
             Trading fees are routed between the creator, holders and platform
             according to the market state.
           </p>
@@ -487,7 +487,7 @@ export function TokenPage({ token }: { token: string }) {
               />
             ))}
           </div>
-          <div className="mt-4 flex flex-wrap gap-3 text-xs font-medium text-[#737373]">
+          <div className="mt-4 flex flex-wrap gap-3 text-xs font-medium text-muted">
             {(data.feeParts.length > 0
               ? data.feeParts
               : [

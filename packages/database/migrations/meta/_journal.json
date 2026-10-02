@@ -43,6 +43,13 @@
       "when": 1790536187738,
       "tag": "0005_friendly_maria_hill",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790610000000,
+      "tag": "0006_rovo_token",
+      "breakpoints": true
     }
   ]
 }

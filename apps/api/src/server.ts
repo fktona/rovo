@@ -7,6 +7,7 @@ import { IdentityAttestationService } from "./attestations.js";
 import { XApiProfileResolver } from "./x.js";
 import { selectXTokens, XOAuth } from "./x-auth.js";
 import { loadXOauthTokens, saveXOauthTokens } from "./x-tokens.js";
+import { loadRovoToken, saveRovoToken } from "./rovo-token.js";
 import { createPublicClient, http, parseAbi } from "viem";
 import { createLaunchSyncClient, indexLaunchImmediately, runLaunchSync } from "./launch-sync.js";
 
@@ -87,6 +88,8 @@ const app = buildServer({
     if (!allowed) throw new Error("Wallet is not a fee admin");
   },
   replaceXTokens: (input) => xOauth.replace(input.accessToken, input.refreshToken),
+  getRovoToken: () => loadRovoToken(db),
+  setRovoToken: (address) => saveRovoToken(db, address),
   recordLaunch: async (input) => {
     await indexLaunchImmediately({
       db,

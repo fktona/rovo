@@ -36,7 +36,8 @@ export function ProfileLive() {
   const toast = useToast();
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
-  const wallet = identity.wallets[0]?.address as Address | undefined;
+  const wallet = (identity.wallets[0]?.address ??
+    identity.user?.wallet?.address) as Address | undefined;
   const handle = identity.xAccount?.username ?? undefined;
   const x = useXAccount(handle);
   const tokenQuery = useTokenForHandle(handle);
@@ -116,24 +117,24 @@ export function ProfileLive() {
   ) : null;
 
   return (
-    <main className="mx-auto w-full max-w-3xl px-4 py-6 text-white sm:px-6 sm:py-8">
+    <main className="mx-auto w-full max-w-3xl px-4 py-6 text-foreground sm:px-6 sm:py-8">
       <h1 className="text-[28px] font-bold tracking-[-0.6px] sm:text-3xl">
         Your profile
       </h1>
-      <p className="mt-2 max-w-xl text-sm leading-6 text-[#8a8a8a]">
+      <p className="mt-2 max-w-xl text-sm leading-6 text-muted">
         During the contract audit, trading fees collected by Rovo go to the X
         Money wallet. That transfer does not automatically pay your creator or
         scout share.
       </p>
       {!identity.authenticated ? (
         <div className="mt-6">
-          <p className="text-sm text-[#999]">
+          <p className="text-sm text-muted">
             Log in to see your X account, profile token, and scout fees.
           </p>
           <button
             type="button"
             onClick={() => identity.login()}
-            className="mt-4 rounded-xl bg-[#ccff00] px-6 py-3 font-semibold text-black"
+            className="mt-4 rounded-xl bg-action px-6 py-3 font-semibold text-ink"
           >
             Log in
           </button>
@@ -157,13 +158,13 @@ export function ProfileLive() {
             ) : (
               <div>
                 <p className="font-semibold">X account not linked</p>
-                <p className="mt-1 text-sm text-[#8a8a8a]">
+                <p className="mt-1 text-sm text-muted">
                   Link X to show your name and launch a profile token.
                 </p>
                 <button
                   type="button"
                   onClick={() => void linkX()}
-                  className="mt-4 rounded-xl bg-[#ccff00] px-5 py-3 text-sm font-semibold text-black"
+                  className="mt-4 rounded-xl bg-action px-5 py-3 text-sm font-semibold text-ink"
                 >
                   Link X account
                 </button>
@@ -174,7 +175,7 @@ export function ProfileLive() {
                 type="button"
                 disabled={busy}
                 onClick={verify}
-                className="mt-4 rounded-xl bg-[#ccff00] px-5 py-3 text-sm font-semibold text-black disabled:opacity-50"
+                className="mt-4 rounded-xl bg-action px-5 py-3 text-sm font-semibold text-ink disabled:opacity-50"
               >
                 {busy
                   ? "Verifying…"
@@ -186,7 +187,7 @@ export function ProfileLive() {
             {wallet ? (
               <div className="mt-5 flex items-center justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="text-xs text-[#8a8a8a]">Wallet</p>
+                  <p className="text-xs text-muted">Wallet</p>
                   <p className="truncate text-sm font-medium">
                     {sliceAddress(wallet)}
                   </p>
@@ -194,7 +195,7 @@ export function ProfileLive() {
                 <button
                   type="button"
                   onClick={copyWallet}
-                  className="shrink-0 text-sm font-semibold text-[#ccff00]"
+                  className="shrink-0 text-sm font-semibold text-accent"
                 >
                   {copied ? "Copied" : "Copy"}
                 </button>
@@ -203,7 +204,7 @@ export function ProfileLive() {
               <button
                 type="button"
                 onClick={() => identity.connectOrCreateWallet()}
-                className="mt-4 text-sm font-semibold text-[#ccff00]"
+                className="mt-4 text-sm font-semibold text-accent"
               >
                 Connect wallet
               </button>
@@ -213,7 +214,7 @@ export function ProfileLive() {
           <div
             role="tablist"
             aria-label="Fee allocations"
-            className="mt-6 flex gap-6 border-b border-[#2a2a2a]"
+            className="mt-6 flex gap-6 border-b border-line"
           >
             {(
               [
@@ -231,8 +232,8 @@ export function ProfileLive() {
                   onClick={() => setTab(id)}
                   className={`-mb-px border-b-2 pb-3 text-sm font-semibold ${
                     selected
-                      ? "border-[#ccff00] text-white"
-                      : "border-transparent text-[#8a8a8a]"
+                      ? "border-accent text-foreground"
+                      : "border-transparent text-muted"
                   }`}
                 >
                   {label}
@@ -246,8 +247,8 @@ export function ProfileLive() {
 
           {tab === "profile" ? (
             <div role="tabpanel">
-              {tokenQuery.isPending ? (
-                <p className="py-6 text-sm text-[#8a8a8a]">Loading your token…</p>
+              {handle && tokenQuery.isLoading ? (
+                <p className="py-6 text-sm text-muted">Loading your token…</p>
               ) : profileToken ? (
                 <FeeShare token={profileToken} role="creator" />
               ) : (
@@ -261,7 +262,7 @@ export function ProfileLive() {
           ) : (
             <div role="tabpanel">
               {launches.isPending ? (
-                <p className="py-6 text-sm text-[#8a8a8a]">
+                <p className="py-6 text-sm text-muted">
                   Loading scout tokens…
                 </p>
               ) : scouts.length > 0 ? (
@@ -310,14 +311,14 @@ function IdentityFace({
           <span className="truncate">{name}</span>
           {verified ? <VerifiedMark /> : null}
         </p>
-        <p className="truncate text-sm text-[#8a8a8a]">
+        <p className="truncate text-sm text-muted">
           @{handle}
           {followers != null ? ` · ${formatFollowers(followers)} followers` : ""}
         </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {marketCap ? (
-          <p className="text-sm font-semibold text-[#ccff00]">{marketCap}</p>
+          <p className="text-sm font-semibold text-accent">{marketCap}</p>
         ) : null}
         {linked ? <Chevron /> : null}
       </div>
@@ -355,11 +356,11 @@ function ScoutToken({
         <Avatar src={xAvatarUrl(launch.imageUrl)} label={name} />
         <div className="min-w-0 flex-1">
           <p className="truncate text-lg font-bold">{name}</p>
-          <p className="truncate text-sm text-[#8a8a8a]">@{launch.handle}</p>
+          <p className="truncate text-sm text-muted">@{launch.handle}</p>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {marketCap ? (
-            <p className="text-sm font-semibold text-[#ccff00]">{marketCap}</p>
+            <p className="text-sm font-semibold text-accent">{marketCap}</p>
           ) : null}
           <Chevron />
         </div>
@@ -408,23 +409,23 @@ function FeeShare({ token, role }: { token: Address; role: ShareRole }) {
     <div className="pt-5">
       <div className="grid grid-cols-2 gap-4">
         <div>
-          <p className="text-xs text-[#8a8a8a]">Creator fees</p>
+          <p className="text-xs text-muted">Creator fees</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums">{money(usd)}</p>
         </div>
         <div>
-          <p className="text-xs text-[#8a8a8a]">Your share · {percent}%</p>
-          <p className="mt-1 text-2xl font-semibold tabular-nums text-[#ccff00]">
+          <p className="text-xs text-muted">Your share · {percent}%</p>
+          <p className="mt-1 text-2xl font-semibold tabular-nums text-accent">
             {money(shareUsd)}
           </p>
         </div>
       </div>
-      <p className="mt-3 text-sm text-[#8a8a8a]">
+      <p className="mt-3 text-sm text-muted">
         {percent}% of fees is allocated to you.
       </p>
       <button
         type="button"
         disabled
-        className="mt-4 h-12 w-full cursor-not-allowed rounded-xl bg-[#1c1c1c] text-sm font-semibold text-[#6a6a6a]"
+        className="mt-4 h-12 w-full cursor-not-allowed rounded-xl bg-surface text-sm font-semibold text-muted"
       >
         Claim
       </button>
@@ -444,10 +445,10 @@ function EmptyTokens({
   return (
     <div className="py-8">
       <p className="font-semibold">{title}</p>
-      <p className="mt-1 text-sm text-[#8a8a8a]">{body}</p>
+      <p className="mt-1 text-sm text-muted">{body}</p>
       <Link
         href="/launch"
-        className="mt-4 inline-flex rounded-xl bg-[#ccff00] px-4 py-2.5 text-sm font-semibold text-black"
+        className="mt-4 inline-flex rounded-xl bg-action px-4 py-2.5 text-sm font-semibold text-ink"
       >
         {action}
       </Link>
@@ -477,7 +478,7 @@ function Avatar({
   }
   return (
     <span
-      className={`flex size-14 shrink-0 items-center justify-center bg-[#2a2a2a] text-lg font-semibold uppercase ${shape}`}
+      className={`flex size-14 shrink-0 items-center justify-center bg-surface-raised text-lg font-semibold uppercase ${shape}`}
     >
       {label.replace(/^@/, "").slice(0, 1) || "?"}
     </span>
@@ -507,7 +508,7 @@ function VerifiedMark() {
 
 function Chevron() {
   return (
-    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" className="text-[#8a8a8a]">
+    <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true" className="text-muted">
       <path
         d="M6 3.5 10.5 8 6 12.5"
         fill="none"
