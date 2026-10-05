@@ -27,7 +27,7 @@ export function buildServer(deps: {
     "issueSelfRove" | "issueScout" | "issueClaim"
   >;
   xResolver?: PublicXProfileResolver;
-  authorizeAdmin?: (accessToken: string, wallet: Address) => Promise<void>;
+  authorizeAdmin?: (accessToken: string, wallet: string) => Promise<void>;
   replaceXTokens?: (input: {
     accessToken: string;
     refreshToken: string;
@@ -292,7 +292,15 @@ export function buildServer(deps: {
     }
     const body = z
       .object({
-        wallet: addressSchema,
+        wallet: z
+          .string()
+          .trim()
+          .refine(
+            (value) =>
+              /^0x[a-fA-F0-9]{40}$/.test(value) ||
+              /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(value),
+            "invalid wallet",
+          ),
         accessToken: z.string().trim().min(20).max(500),
         refreshToken: z.string().trim().min(20).max(500),
       })

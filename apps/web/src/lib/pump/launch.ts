@@ -7,8 +7,11 @@ import {
   ComputeBudgetProgram,
   Keypair,
   PublicKey,
+  Transaction,
   TransactionMessage,
   VersionedTransaction,
+  type AddressLookupTableAccount,
+  type TransactionInstruction,
 } from "@solana/web3.js";
 import BN from "bn.js";
 import bs58 from "bs58";
@@ -20,6 +23,7 @@ import {
   type LaunchResult,
 } from "@/lib/raydium/launch-shared";
 import { creatorFeeBpsForSource, parseTokenAmount } from "./fees";
+import { ensureLaunchLookupTable, sharedAccountKeys } from "./lookup-table";
 import type { PumpLaunchPair } from "./quotes";
 
 const CREATE_COMPUTE_UNITS = 600_000;
@@ -124,37 +128,113 @@ export async function launchPumpToken(
   if (tokenAmount?.isZero()) {
     throw new Error("That first buy is too small for this pair.");
   }
-  input.onStatus?.("Approve the Pump launch.");
+  const solBuy = tokenAmount && input.pair.source === "sol";
   const instructions = tokenAmount
-    ? await PUMP_SDK.createV2AndBuyV2Instructions({
+    ? solBuy
+      ? await PUMP_SDK.createV2AndBuyInstructions({
+          global,
+          mint: mint.publicKey,
+          name,
+          symbol,
+          uri: uploaded.metadataUri,
+          creator,
+          user,
+          amount: tokenAmount,
+          solAmount: quoteAmount,
+          mayhemMode: false,
+          holderReward: false,
+          ...(feeBps ? { creatorFeeBps: feeBps } : {}),
+        })
+      : await PUMP_SDK.createV2AndBuyV2Instructions({
+          ...shared,
+          global,
+          quoteAmount,
+          amount: tokenAmount,
+        })
+    : [await PUMP_SDK.createV2Instruction(shared)];
+
+  const sendInstructions = async (
+    batch: TransactionInstruction[],
+    signers: Keypair[],
+    lookupTables: AddressLookupTableAccount[] = [],
+  ) => {
+    const { blockhash } = await connection.getLatestBlockhash("confirmed");
+    const transaction = new VersionedTransaction(
+      new TransactionMessage({
+        payerKey: user,
+        recentBlockhash: blockhash,
+        instructions: batch,
+      }).compileToV0Message(lookupTables),
+    );
+    if (signers.length > 0) transaction.sign(signers);
+    const signature = bs58.encode(
+      await input.sendTransaction(transaction.serialize(), chain),
+    );
+    await verifyTransaction(connection, signature);
+    return signature;
+  };
+  const withBudget = (batch: TransactionInstruction[]) => [
+    ComputeBudgetProgram.setComputeUnitLimit({ units: CREATE_COMPUTE_UNITS }),
+    ...batch,
+  ];
+
+  let signature: string;
+  if (solBuy) {
+    input.onStatus?.("Approve the Pump launch.");
+    const { blockhash } = await connection.getLatestBlockhash("confirmed");
+    const legacyBytes = (batch: TransactionInstruction[]) => {
+      const transaction = new Transaction({
+        feePayer: user,
+        recentBlockhash: blockhash,
+      }).add(...batch);
+      transaction.partialSign(mint);
+      return transaction.serialize({
+        requireAllSignatures: false,
+        verifySignatures: false,
+      });
+    };
+    const budget = ComputeBudgetProgram.setComputeUnitLimit({
+      units: CREATE_COMPUTE_UNITS,
+    });
+    let bytes: Uint8Array;
+    try {
+      bytes = legacyBytes([budget, ...instructions]);
+    } catch (cause) {
+      if (!isTransactionTooLarge(cause)) throw cause;
+      bytes = legacyBytes(instructions);
+    }
+    signature = bs58.encode(await input.sendTransaction(bytes, chain));
+    await verifyTransaction(connection, signature);
+  } else {
+    let lookupTables: AddressLookupTableAccount[] = [];
+    if (tokenAmount) {
+      const decoy = await PUMP_SDK.createV2AndBuyV2Instructions({
         ...shared,
+        mint: Keypair.generate().publicKey,
         global,
         quoteAmount,
         amount: tokenAmount,
-      })
-    : [await PUMP_SDK.createV2Instruction(shared)];
-
-  const { blockhash } = await connection.getLatestBlockhash("confirmed");
-  const transaction = new VersionedTransaction(
-    new TransactionMessage({
-      payerKey: user,
-      recentBlockhash: blockhash,
-      instructions: [
-        ComputeBudgetProgram.setComputeUnitLimit({
-          units: CREATE_COMPUTE_UNITS,
+      });
+      lookupTables = [
+        await ensureLaunchLookupTable({
+          connection,
+          user,
+          addresses: [
+            ComputeBudgetProgram.programId,
+            ...sharedAccountKeys(instructions, decoy),
+          ],
+          onStatus: input.onStatus,
+          send: (setup) => sendInstructions(setup, []).then(() => undefined),
         }),
-        ...instructions,
-      ],
-    }).compileToV0Message(),
-  );
-  transaction.sign([mint]);
-  const signature = bs58.encode(
-    await input.sendTransaction(
-      transaction.serialize(),
-      chain,
-    ),
-  );
-  await verifyTransaction(connection, signature);
+      ];
+    }
+    input.onStatus?.("Approve the Pump launch.");
+    signature = await sendInstructions(
+      withBudget(instructions),
+      [mint],
+      lookupTables,
+    );
+  }
 
   const indexed = await saveCreatedCoin({
     mint: mint.publicKey.toBase58(),
@@ -174,6 +254,14 @@ export async function launchPumpToken(
     indexed,
     creatorFeeBps: creatorFeeBps ?? 0,
   };
+}
+
+function isTransactionTooLarge(cause: unknown) {
+  return (
+    cause instanceof Error &&
+    (cause.message.startsWith("Transaction too large") ||
+      cause.message.includes("encoding overruns"))
+  );
 }
 
 async function saveCreatedCoin(body: {

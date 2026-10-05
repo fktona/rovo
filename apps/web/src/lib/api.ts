@@ -204,11 +204,11 @@ export class RovoApiClient {
       body: { wallet: asAddress(wallet), address: asAddress(address) },
     });
   }
-  updateXTokens(token: string, wallet: Address, accessToken: string, refreshToken: string) {
+  updateXTokens(token: string, wallet: string, accessToken: string, refreshToken: string) {
     return this.request<{ updated: true; expiresAt: string }>("/v1/admin/x-tokens", {
       token,
       body: {
-        wallet: asAddress(wallet),
+        wallet: wallet.trim(),
         accessToken,
         refreshToken,
       },

@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import type { ChartPoint } from "./token-chart";
+import { ipfsUrl } from "@/lib/ipfs";
 import { formatPriceUsd, formatUsd } from "@/lib/token-market";
 import type {
   PumpCoinDetail,
@@ -36,10 +37,7 @@ function shortAddress(value: string) {
 
 function tokenImage(value: string | undefined) {
   if (!value) return "/figma-token/zora.png";
-  if (value.startsWith("ipfs://")) {
-    return `https://ipfs.io/ipfs/${value.slice("ipfs://".length)}`;
-  }
-  return value;
+  return ipfsUrl(value);
 }
 
 function activityKey(range: ChartRange): keyof PumpMarketActivity {

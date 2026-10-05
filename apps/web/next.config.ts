@@ -51,6 +51,7 @@ const nextConfig: NextConfig = {
   outputFileTracingRoot: path.join(__dirname, "../.."),
   env: {
     NEXT_PUBLIC_PUMP_FEE_WALLET: process.env.NEXT_PUBLIC_PUMP_FEE_WALLET,
+    NEXT_PUBLIC_SOLANA_RPC_URL: process.env.NEXT_PUBLIC_SOLANA_RPC_URL,
   },
   transpilePackages: ["@raydium-io/raydium-sdk-v2"],
   turbopack: { resolveAlias: pumpAliases },

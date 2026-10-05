@@ -74,7 +74,7 @@ export async function POST(request: Request) {
     const imageJson = await imageResponse.json();
     const imageCid = imageJson.IpfsHash || imageJson.data?.cid;
     if (!imageCid) throw new Error("Pinata did not return an image CID");
-    const imageUri = `https://ipfs.io/ipfs/${imageCid}`;
+    const imageUri = `https://gateway.pinata.cloud/ipfs/${imageCid}`;
     const website = String(form.get("website") || "") || undefined;
     let pairedAsset: Record<string, string> | undefined;
     const pairedAssetJson = String(form.get("pairedAsset") || "");

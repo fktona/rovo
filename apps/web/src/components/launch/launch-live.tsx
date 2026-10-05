@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import {
   useCreateWallet,
   useSignAndSendTransaction,
+  useStandardWallets,
   useWallets as useSolanaWallets,
 } from "@privy-io/react-auth/solana";
 import { MemeLaunchForm } from "./meme-launch-form";
@@ -15,6 +16,11 @@ import type { XAccountView } from "@/lib/api";
 import { useToast } from "@/components/toast/toast-provider";
 import { creatorFeeLabel } from "@/lib/pump/fees";
 import { launchPumpToken } from "@/lib/pump/launch";
+import {
+  connectExternalSolanaWallet,
+  hasExternalSolanaWallet,
+  preferredSolanaWallet,
+} from "@/lib/solana-wallet";
 import type { PumpLaunchPair } from "@/lib/pump/quotes";
 
 type Mode = "self" | "scout" | "meme";
@@ -36,6 +42,11 @@ function safeHandle(value: string) {
   } catch {
     return undefined;
   }
+}
+
+function pumpSymbol(handle: string) {
+  const compact = handle.replace(/[^A-Za-z0-9]/g, "");
+  return (compact || handle).slice(0, 13);
 }
 
 function xAvatarUrl(url: string | null | undefined) {
@@ -68,9 +79,15 @@ export function LaunchLive() {
   const identity = useRovoIdentity();
   const toast = useToast();
   const { wallets: solanaWallets } = useSolanaWallets();
+  const { wallets: standardWallets } = useStandardWallets();
   const { signAndSendTransaction } = useSignAndSendTransaction();
   const { createWallet } = useCreateWallet();
-  const solanaWallet = solanaWallets[0];
+  const externalWalletAvailable = hasExternalSolanaWallet(standardWallets);
+  const solanaWallet = externalWalletAvailable
+    ? solanaWallets.find(
+        (wallet) => !/privy/i.test(wallet.standardWallet.name),
+      )
+    : preferredSolanaWallet(solanaWallets);
   const [mode, setMode] = useState<Mode>("self");
   const [step, setStep] = useState(1);
   const [scoutQuery, setScoutQuery] = useState("");
@@ -115,7 +132,7 @@ export function LaunchLive() {
           : scoutProfile?.displayName?.trim()) ||
         handle ||
         "";
-  const symbol = mode === "meme" ? memeSymbol.trim() : (handle ?? "");
+  const symbol = mode === "meme" ? memeSymbol.trim() : pumpSymbol(handle ?? "");
   const avatar = mode === "meme"
     ? memePreview
     : xAvatarUrl(
@@ -190,20 +207,33 @@ export function LaunchLive() {
     setScoutQuery(`@${account.handle}`);
     setError("");
   };
+  const ensureSolanaWallet = async () => {
+    if (solanaWallet) return true;
+    if (externalWalletAvailable) {
+      try {
+        return await connectExternalSolanaWallet(standardWallets);
+      } catch (cause) {
+        toast.walletError(
+          cause,
+          "Could not connect MetaMask. Enable its Solana account, then try again.",
+        );
+        return false;
+      }
+    }
+    try {
+      await createWallet();
+    } catch (cause) {
+      toast.walletError(cause, "Could not create a Solana wallet.");
+    }
+    return false;
+  };
   const continueIdentity = async () => {
     setError("");
     if (!identity.authenticated) {
       identity.login();
       return;
     }
-    if (!solanaWallet) {
-      try {
-        await createWallet();
-      } catch (cause) {
-        toast.walletError(cause, "Could not create a Solana wallet.");
-      }
-      return;
-    }
+    if (!(await ensureSolanaWallet())) return;
     if (mode === "self" && !identity.xAccount) {
       router.push("/onboarding");
       return;
@@ -220,7 +250,7 @@ export function LaunchLive() {
       );
       return;
     }
-    if (symbol.replace(/^\$/, "").length > 13) {
+    if (mode === "meme" && symbol.replace(/^\$/, "").length > 13) {
       setError("Symbols can be at most 13 characters.");
       return;
     }
@@ -256,7 +286,7 @@ export function LaunchLive() {
           mode === "meme"
             ? memeDescription.trim()
             : `${displayName} was launched on rovo.fun`,
-        xLink: mode === "meme" ? memeTwitter.trim() : `https://x.com/${symbol}`,
+        xLink: mode === "meme" ? memeTwitter.trim() : `https://x.com/${handle}`,
         website: mode === "meme" ? memeWebsite.trim() : "",
         telegram: mode === "meme" ? memeTelegram.trim() : "",
         customBuy: hasOpeningBuy ? openingAmount.trim() : "",
@@ -282,7 +312,7 @@ export function LaunchLive() {
       }
       setLaunched({
         name: displayName,
-        symbol,
+        symbol: mode === "meme" ? symbol : (handle ?? symbol),
         mint: result.mint,
         signature: result.signature,
         kind: mode,
@@ -300,7 +330,7 @@ export function LaunchLive() {
   const identityLabel = !identity.authenticated
     ? "Log in to continue"
     : !solanaWallet
-      ? "Create Solana wallet"
+      ? "Connect wallet"
         : mode === "self" && !identity.xAccount
         ? "Link X account"
         : "Continue";
@@ -411,21 +441,14 @@ export function LaunchLive() {
             openingValue={openingValue}
             buyPresets={buyPresets}
             busy={busy}
-            launchLabel={!identity.authenticated ? "Log in" : !solanaWallet ? "Create Solana wallet" : busy ? busyLabel : "Launch"}
+            launchLabel={!identity.authenticated ? "Log in" : !solanaWallet ? "Connect wallet" : busy ? busyLabel : "Launch"}
             onLaunch={async () => {
               setError("");
               if (!identity.authenticated) {
                 identity.login();
                 return;
               }
-              if (!solanaWallet) {
-                try {
-                  await createWallet();
-                } catch (cause) {
-                  toast.walletError(cause, "Could not create a Solana wallet.");
-                }
-                return;
-              }
+              if (!(await ensureSolanaWallet())) return;
               if (!memeName.trim() || !memeSymbol.trim()) {
                 setError("Enter a name and a ticker.");
                 return;
@@ -696,7 +719,7 @@ export function LaunchLive() {
             <div className="flex items-center gap-5">
               <Avatar src={avatar} label={symbol || displayName} size={58} />
               <p className="text-[27px] font-bold tracking-[-0.81px]">
-                @{symbol || "profile"}
+                @{handle || "profile"}
               </p>
             </div>
             <div className="mt-6 h-px bg-surface-raised" />

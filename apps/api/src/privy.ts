@@ -48,15 +48,16 @@ export class PrivyIdentityVerifier implements IdentityVerifier {
     };
   }
 
-  async ownsWallet(accessToken: string, wallet: Address): Promise<boolean> {
+  async ownsWallet(accessToken: string, wallet: string): Promise<boolean> {
     const claims = await this.client.verifyAccessToken(accessToken);
     const user = await this.client.getUser(claims.user_id);
-    const normalized = wallet.toLowerCase();
-    return user.linked_accounts.some(
-      (account) =>
-        (account.type === "wallet" || account.type === "smart_wallet") &&
-        account.address.toLowerCase() === normalized,
-    );
+    const evm = /^0x[a-fA-F0-9]{40}$/.test(wallet);
+    return user.linked_accounts.some((account) => {
+      if (account.type !== "wallet" && account.type !== "smart_wallet") return false;
+      return evm
+        ? account.address.toLowerCase() === wallet.toLowerCase()
+        : account.address === wallet;
+    });
   }
 }
 

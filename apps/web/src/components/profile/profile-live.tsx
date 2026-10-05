@@ -7,6 +7,7 @@ import { useCreateWallet, useWallets } from "@privy-io/react-auth/solana";
 import { useRovoIdentity } from "@/hooks/useRovoIdentity";
 import { CreatorIdentity } from "@/components/creator-identity";
 import { useToast } from "@/components/toast/toast-provider";
+import { ipfsUrl } from "@/lib/ipfs";
 
 type PumpCoin = {
   mint: string;
@@ -179,7 +180,7 @@ function CoinRow({ coin }: { coin: PumpCoin }) {
       href={`/token/${coin.mint}`}
       className="flex items-center gap-3 py-5 active:opacity-70"
     >
-      <Avatar src={coin.imageUrl} label={name} />
+      <Avatar src={ipfsUrl(coin.imageUrl)} label={name} />
       <div className="min-w-0 flex-1">
         <p className="truncate text-lg font-bold">{name}</p>
         <p className="truncate text-sm text-muted">

@@ -6,12 +6,18 @@ import bs58 from "bs58";
 import {
   useCreateWallet,
   useSignAndSendTransaction,
+  useStandardWallets,
   useWallets as useSolanaWallets,
 } from "@privy-io/react-auth/solana";
 import { useRovoIdentity } from "@/hooks/useRovoIdentity";
 import { useToast } from "@/components/toast/toast-provider";
 import { formatQuoteAmount } from "@/lib/contracts/uniswap";
 import { parseTokenAmount } from "@/lib/pump/fees";
+import {
+  connectExternalSolanaWallet,
+  hasExternalSolanaWallet,
+  preferredSolanaWallet,
+} from "@/lib/solana-wallet";
 import {
   SOL_BUY_RESERVE,
   formatTokenAmount,
@@ -73,9 +79,15 @@ function venueLabel(venue: PumpTradeVenue) {
 
 export function PumpTradePanel({ mint }: { mint: string }) {
   const { wallets: solanaWallets } = useSolanaWallets();
+  const { wallets: standardWallets } = useStandardWallets();
   const { signAndSendTransaction } = useSignAndSendTransaction();
   const { createWallet } = useCreateWallet();
-  const solanaWallet = solanaWallets[0];
+  const externalWalletAvailable = hasExternalSolanaWallet(standardWallets);
+  const solanaWallet = externalWalletAvailable
+    ? solanaWallets.find(
+        (wallet) => !/privy/i.test(wallet.standardWallet.name),
+      )
+    : preferredSolanaWallet(solanaWallets);
   const identity = useRovoIdentity();
   const toast = useToast();
   const queryClient = useQueryClient();
@@ -175,6 +187,17 @@ export function PumpTradePanel({ mint }: { mint: string }) {
       return;
     }
     if (!solanaWallet) {
+      if (externalWalletAvailable) {
+        try {
+          await connectExternalSolanaWallet(standardWallets);
+        } catch (cause) {
+          toast.walletError(
+            cause,
+            "Could not connect MetaMask. Enable its Solana account, then try again.",
+          );
+        }
+        return;
+      }
       try {
         await createWallet();
       } catch (cause) {

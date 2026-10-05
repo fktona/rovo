@@ -9,6 +9,11 @@ import {
 } from "react";
 import { PrivyProvider, type PrivyClientConfig } from "@privy-io/react-auth";
 import { toSolanaWalletConnectors } from "@privy-io/react-auth/solana";
+import {
+  createSolanaRpc,
+  createSolanaRpcSubscriptions,
+  mainnet,
+} from "@solana/kit";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { RovoApiClient } from "../lib/api";
 import {
@@ -44,6 +49,19 @@ export function RovoProviders({
 }) {
   const resolved = useMemo(() => config ?? getWebConfig(), [config]);
   const walletChain = useMemo(() => robinhoodChainWithRpc(resolved.rpcUrl), [resolved.rpcUrl]);
+  const solanaRpcs = useMemo(() => {
+    const httpUrl =
+      process.env.NEXT_PUBLIC_SOLANA_RPC_URL?.trim() ||
+      "https://api.mainnet-beta.solana.com";
+    const webSocketUrl = httpUrl.replace(/^https:/, "wss:").replace(/^http:/, "ws:");
+    return {
+      "solana:mainnet": {
+        rpc: createSolanaRpc(mainnet(httpUrl)),
+        rpcSubscriptions: createSolanaRpcSubscriptions(mainnet(webSocketUrl)),
+        blockExplorerUrl: "https://explorer.solana.com",
+      },
+    };
+  }, []);
   const value = useMemo(() => createContextValue(resolved), [resolved]);
   const [queryClient] = useState(
     () =>
@@ -81,12 +99,14 @@ export function RovoProviders({
         loginMethods: ["wallet", "twitter", "email" , "google"],
         appearance: {
           walletChainType: "solana-only",
+          walletList: ["metamask", "detected_solana_wallets"],
         },
+        solana: { rpcs: solanaRpcs },
         externalWallets: {
           solana: { connectors: toSolanaWalletConnectors() },
         },
         embeddedWallets: {
-          solana: { createOnLogin: "users-without-wallets" },
+          solana: { createOnLogin: "off" },
         },
       }}
     >

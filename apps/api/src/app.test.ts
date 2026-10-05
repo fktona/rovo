@@ -298,6 +298,17 @@ describe("Rovo API", () => {
     expect(savedResponse.json()).toEqual({ updated: true, expiresAt: "2026-09-28T00:00:00.000Z" });
     expect(saved).toEqual([{ accessToken: "access-token-value-ok", refreshToken: "refresh-token-value-ok" }]);
     expect(JSON.stringify(savedResponse.json())).not.toContain("access-token-value-ok");
+    const solana = await app.inject({
+      method: "POST",
+      url: "/v1/admin/x-tokens",
+      headers: { authorization: "Bearer valid" },
+      payload: {
+        wallet: "7iMWJf5osYpuon6oDjtmZ2DvxJqRDnsZrbSBnmcuverD",
+        accessToken: "access-token-value-ok",
+        refreshToken: "refresh-token-value-ok",
+      },
+    });
+    expect(solana.statusCode).toBe(403);
   });
 
   it("returns n/a until an admin saves the Rovo token address", async () => {

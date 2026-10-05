@@ -5,10 +5,9 @@ import { usePathname, useRouter } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { useRovoContext } from "@/providers/RovoProviders";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 import { useRovoIdentity } from "@/hooks/useRovoIdentity";
 import { useXAccount } from "@/hooks/useRovoQueries";
-import { useFeeAdmin } from "@/hooks/useRovoQueries";
-import type { Address } from "viem";
 import { onboardingSeen } from "@/lib/onboarding";
 import { useToast } from "@/components/toast/toast-provider";
 import { AssetIcon, icons, RovoWordmark } from "../home/assets";
@@ -81,6 +80,54 @@ function Chevron({ left = false }: { left?: boolean }) {
   );
 }
 
+function AdminNavLink({
+  pathname,
+  onNavigate,
+  itemAlign,
+  labelClass,
+  tooltipClass,
+}: {
+  pathname: string;
+  onNavigate: () => void;
+  itemAlign: string;
+  labelClass: string;
+  tooltipClass: string;
+}) {
+  const admin = useIsAdmin();
+  if (!admin) return null;
+  return (
+    <Link
+      href="/admin"
+      aria-current={isActive(pathname, "/admin") ? "page" : undefined}
+      onClick={onNavigate}
+      className={`group relative flex items-center gap-2.5 rounded-[15px] py-2.5 text-sm font-medium tracking-[.02em] hover:bg-surface lg:py-3 lg:text-base ${itemAlign} ${isActive(pathname, "/admin") ? styles.navLinkActive : ""}`}
+    >
+      <span className="flex size-6 shrink-0 items-center justify-center text-xl" aria-hidden="true">⚙</span>
+      <span className={labelClass}>Admin</span>
+      <span aria-hidden="true" className={tooltipClass}>Admin</span>
+    </Link>
+  );
+}
+
+function AdminMenuLink({ onClose }: { onClose: () => void }) {
+  const admin = useIsAdmin();
+  if (!admin) return null;
+  return (
+    <li>
+      <Link
+        href="/admin"
+        onClick={onClose}
+        className="flex items-center justify-between py-3 text-base font-medium"
+      >
+        Admin console
+        <span aria-hidden="true" className="text-muted">
+          ›
+        </span>
+      </Link>
+    </li>
+  );
+}
+
 function Sidebar({
   pinnedOpen,
   overlayOpen,
@@ -93,8 +140,7 @@ function Sidebar({
   onNavigate: () => void;
 }) {
   const pathname = usePathname();
-  const { wallets } = useRovoIdentity();
-  const admin = useFeeAdmin(wallets[0]?.address as Address | undefined);
+  const { configured } = useRovoIdentity();
   const [desktop, setDesktop] = useState(true);
   useEffect(() => {
     const query = window.matchMedia("(min-width: 1024px)");
@@ -191,17 +237,14 @@ function Sidebar({
                 </Link>
               );
             })}
-          {admin.data && (
-            <Link
-              href="/admin"
-              aria-current={isActive(pathname, "/admin") ? "page" : undefined}
-              onClick={onNavigate}
-              className={`group relative flex items-center gap-2.5 rounded-[15px] py-2.5 text-sm font-medium tracking-[.02em] hover:bg-surface lg:py-3 lg:text-base ${itemAlign} ${isActive(pathname, "/admin") ? styles.navLinkActive : ""}`}
-            >
-              <span className="flex size-6 shrink-0 items-center justify-center text-xl" aria-hidden="true">⚙</span>
-              <span className={labelClass}>Admin</span>
-              <span aria-hidden="true" className={tooltipClass}>Admin</span>
-            </Link>
+          {configured && (
+            <AdminNavLink
+              pathname={pathname}
+              onNavigate={onNavigate}
+              itemAlign={itemAlign}
+              labelClass={labelClass}
+              tooltipClass={tooltipClass}
+            />
           )}
           <Link
             href="/docs"
@@ -307,16 +350,13 @@ function AccountMenu({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
-  const { authenticated, login, logout, xAccount, wallets } = useRovoIdentity();
-  const admin = useFeeAdmin(wallets[0]?.address as Address | undefined);
+  const { authenticated, configured, login, logout, xAccount } = useRovoIdentity();
   const router = useRouter();
   const linked = useXAccount(xAccount?.username ?? undefined);
   const username = xAccount?.username ?? linked.data?.handle;
   const picture = xAvatarUrl(
     xAccount?.profilePictureUrl ?? linked.data?.imageUrl,
   );
-
-  const rows = admin.data ? [{ label: "Admin console", href: "/admin" }] : [];
 
   return (
     <div
@@ -337,20 +377,7 @@ function AccountMenu({
         className="motion-panel relative max-h-[min(100%,40rem)] w-full max-w-md overflow-y-auto rounded-2xl border border-line bg-surface p-4 text-foreground shadow-xl"
       >
         <ul className="flex flex-col">
-          {rows.map((item) => (
-            <li key={item.label}>
-              <Link
-                href={item.href}
-                onClick={onClose}
-                className="flex items-center justify-between py-3 text-base font-medium"
-              >
-                {item.label}
-                <span aria-hidden="true" className="text-muted">
-                  ›
-                </span>
-              </Link>
-            </li>
-          ))}
+          {configured && <AdminMenuLink onClose={onClose} />}
           <li>
             <button
               type="button"

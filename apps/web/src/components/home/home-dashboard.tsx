@@ -8,6 +8,7 @@ import type { Pair, Token } from "./data";
 import { useAppSearch } from "../shell/app-shell";
 import { formatPriceUsd, formatUsd } from "@/lib/token-market";
 import { styles } from "./styles";
+import { ipfsUrl } from "@/lib/ipfs";
 import { pairIconSrc } from "@/lib/pairs";
 import { launchPairs } from "@/lib/raydium/pairs";
 import type { PumpMarketCoin } from "@/lib/pump/client";
@@ -589,7 +590,9 @@ export function HomeDashboard() {
         id: coin.mint,
         name: coin.name || market?.name || "Token",
         symbol: coin.symbol || market?.symbol || coin.mint.slice(0, 4),
-        image: coin.imageUrl || market?.image_uri || "/figma-home/rovo-token.png",
+        image:
+          ipfsUrl(coin.imageUrl || market?.image_uri) ||
+          "/figma-home/rovo-token.png",
         marketCap: markets.isPending ? null : marketCapUsd == null ? "—" : formatUsd(marketCapUsd),
         marketCapUsd,
         price: markets.isPending ? null : price == null ? "—" : formatPriceUsd(price),
