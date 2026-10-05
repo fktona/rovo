@@ -31,11 +31,16 @@ import {
 import BN from "bn.js";
 import { launchPairs } from "@/lib/raydium/pairs";
 import {
-  verifyTransaction,
-} from "@/lib/raydium/launch-shared";
+  buildSolToQuoteSwap,
+  quoteSolForTokenB,
+} from "@/lib/raydium/raydium-clmm-swap";
+import { verifyTransaction } from "@/lib/raydium/launch-shared";
+import { Raydium } from "@raydium-io/raydium-sdk-v2";
 import { parseTokenAmount } from "./fees";
 import {
   applySlippage,
+  formatTokenAmount,
+  maxSpendForSlippage,
   pumpTradeVenue,
   type PumpTradeVenue,
 } from "./trade-math";
@@ -54,6 +59,7 @@ export type PumpTradePreview = {
   receiveSymbol: string;
   paySymbol: string;
   payDecimals: number;
+  convertsFromSol?: boolean;
 };
 
 export type PumpTradeRequest = {
@@ -62,6 +68,8 @@ export type PumpTradeRequest = {
   amount: string;
   slippagePercent: number;
   tokenSymbol?: string;
+  /** After a SOL conversion, `amount` is already the quote to spend. */
+  amountInQuote?: boolean;
 };
 
 type CurveMarket = Awaited<ReturnType<typeof loadCurve>>;
@@ -87,6 +95,9 @@ export async function readPumpSpendBalance(input: {
   if (input.side === "sell") {
     const base = await readBaseMint(loaded.connection, loaded.mint);
     return tokenBalance(loaded.connection, owner, loaded.mint, base.program);
+  }
+  if (input.side === "buy" && !loaded.resolved.mint.equals(NATIVE_MINT)) {
+    return BigInt(await loaded.connection.getBalance(owner, "confirmed"));
   }
   if (loaded.resolved.mint.equals(NATIVE_MINT)) {
     return BigInt(await loaded.connection.getBalance(owner, "confirmed"));
@@ -125,11 +136,70 @@ export async function buildPumpTrade(
   return { preview, chain, transaction: transaction.serialize() };
 }
 
+export async function buildSolQuoteSwap(input: {
+  mint: string;
+  amount: string;
+  slippagePercent: number;
+  walletAddress: string;
+}) {
+  const loaded = await loadCurve(readPublicKey(input.mint));
+  if (loaded.resolved.mint.equals(NATIVE_MINT)) {
+    throw new Error("This coin is bought with SOL.");
+  }
+  const sol = spendAmount(input.amount, 9);
+  const owner = readPublicKey(input.walletAddress);
+  const built = await buildSolToQuoteSwap({
+    connection: loaded.connection,
+    owner,
+    quoteMint: loaded.resolved.mint,
+    ticker: symbolForMint(loaded.resolved.mint),
+    buyLamports: sol.toString(),
+  });
+  const spend = maxSpendForSlippage(
+    fromBn(built.minimumReceived),
+    input.slippagePercent,
+  );
+  if (spend <= 0n) throw new Error("That SOL buy is too small for this pair.");
+  return {
+    chain: "solana:mainnet" as const,
+    transaction: built.transaction,
+    buyAmount: formatTokenAmount(spend, loaded.resolved.decimals),
+    quoteSymbol: symbolForMint(loaded.resolved.mint),
+  };
+}
+
 export async function confirmPumpTrade(signature: string) {
   if (!/^[1-9A-HJ-NP-Za-km-z]{64,88}$/.test(signature)) {
     throw new Error("That transaction signature is not valid.");
   }
   await verifyTransaction(tradeNetwork().connection, signature);
+}
+
+async function quoteAmountFromSol(
+  loaded: CurveMarket,
+  sol: bigint,
+  slippagePercent: number,
+) {
+  const raydium = await Raydium.load({
+    connection: loaded.connection,
+    cluster: "mainnet",
+    owner: PREVIEW_USER,
+    disableFeatureCheck: true,
+    disableLoadToken: true,
+  });
+  const quoted = await quoteSolForTokenB({
+    raydium,
+    connection: loaded.connection,
+    quoteMint: loaded.resolved.mint,
+    ticker: symbolForMint(loaded.resolved.mint),
+    buyLamports: sol.toString(),
+  });
+  const spend = maxSpendForSlippage(
+    fromBn(quoted.minimumReceived),
+    slippagePercent,
+  );
+  if (spend <= 0n) throw new Error("That SOL buy is too small for this pair.");
+  return formatTokenAmount(spend, loaded.resolved.decimals);
 }
 
 async function preparePumpTrade(
@@ -140,6 +210,44 @@ async function preparePumpTrade(
   const loaded = await loadCurve(readPublicKey(input.mint));
   const tokenSymbol = input.tokenSymbol?.trim() || "tokens";
   const quoteSymbol = symbolForMint(loaded.resolved.mint);
+  if (
+    input.side === "buy" &&
+    !input.amountInQuote &&
+    !loaded.resolved.mint.equals(NATIVE_MINT)
+  ) {
+    if (build) {
+      throw new Error("Swap SOL into the quote before this buy.");
+    }
+    const sol = spendAmount(input.amount, 9);
+    const quoteSpend = await quoteAmountFromSol(loaded, sol, input.slippagePercent);
+    const prepared = loaded.curve.complete
+      ? await tradeOnPumpSwap(
+          loaded,
+          { ...input, amount: quoteSpend, amountInQuote: true },
+          user,
+          tokenSymbol,
+          quoteSymbol,
+          false,
+        )
+      : await tradeOnCurve(
+          loaded,
+          { ...input, amount: quoteSpend, amountInQuote: true },
+          user,
+          tokenSymbol,
+          quoteSymbol,
+          false,
+        );
+    return {
+      preview: {
+        ...prepared.preview,
+        paySymbol: "SOL",
+        payDecimals: 9,
+        bound: sol,
+        convertsFromSol: true,
+      },
+      instructions: prepared.instructions,
+    };
+  }
   if (loaded.curve.complete) {
     return tradeOnPumpSwap(loaded, input, user, tokenSymbol, quoteSymbol, build);
   }

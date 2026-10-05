@@ -45,6 +45,7 @@ type PumpPreview = {
   receiveSymbol: string;
   paySymbol: string;
   payDecimals: number;
+  convertsFromSol?: boolean;
 };
 
 async function readError(response: Response) {
@@ -75,6 +76,27 @@ function parsedAmount(value: string, decimals: number) {
 
 function venueLabel(venue: PumpTradeVenue) {
   return venue === "pump" ? "Pump" : "PumpSwap";
+}
+
+async function sendBuilt<T>(
+  wallet: T,
+  signAndSendTransaction: (input: {
+    transaction: Uint8Array;
+    wallet: T;
+    chain: SolanaChain;
+  }) => Promise<{ signature: Uint8Array | string }>,
+  built: { chain: SolanaChain; transaction: string },
+) {
+  const signed = await signAndSendTransaction({
+    transaction: Uint8Array.from(atob(built.transaction), (char) =>
+      char.charCodeAt(0),
+    ),
+    wallet,
+    chain: built.chain,
+  });
+  return typeof signed.signature === "string"
+    ? signed.signature
+    : bs58.encode(signed.signature);
 }
 
 export function PumpTradePanel({ mint }: { mint: string }) {
@@ -118,9 +140,14 @@ export function PumpTradePanel({ mint }: { mint: string }) {
 
   const tokenSymbol = coin.data || "tokens";
   const quoteSymbol = market.data?.quoteSymbol ?? "quote";
+  const paysWithSol = side === "buy" && quoteSymbol !== "SOL" && quoteSymbol !== "quote";
   const payDecimals =
-    side === "sell" ? market.data?.baseDecimals : market.data?.quoteDecimals;
-  const inputSymbol = side === "sell" ? tokenSymbol : quoteSymbol;
+    side === "sell"
+      ? market.data?.baseDecimals
+      : paysWithSol
+        ? 9
+        : market.data?.quoteDecimals;
+  const inputSymbol = side === "sell" ? tokenSymbol : paysWithSol ? "SOL" : quoteSymbol;
   const slippagePercent = parsedSlippage(slippage);
   const amountIn =
     payDecimals == null ? null : parsedAmount(amount, payDecimals);
@@ -171,9 +198,9 @@ export function PumpTradePanel({ mint }: { mint: string }) {
       : side === "sell"
         ? balance
         : maxSpendForSlippage(
-            quoteSymbol === "SOL" && balance > SOL_BUY_RESERVE
+            (quoteSymbol === "SOL" || paysWithSol) && balance > SOL_BUY_RESERVE
               ? balance - SOL_BUY_RESERVE
-              : quoteSymbol === "SOL"
+              : quoteSymbol === "SOL" || paysWithSol
                 ? 0n
                 : balance,
             slippagePercent,
@@ -217,17 +244,49 @@ export function PumpTradePanel({ mint }: { mint: string }) {
       toast.error(`Not enough ${inputSymbol}.`);
       return;
     }
-    setBusy(side === "buy" ? "Buying…" : "Selling…");
+    setBusy(paysWithSol ? "Swapping SOL…" : side === "buy" ? "Buying…" : "Selling…");
     try {
+      let tradeAmount = amount;
+      if (paysWithSol) {
+        const converted = await fetch(`/api/pump/coins/${mint}/convert`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            amount,
+            slippagePercent,
+            walletAddress: solanaWallet.address,
+          }),
+        });
+        if (!converted.ok) throw new Error(await readError(converted));
+        const swap = (await converted.json()) as {
+          chain: SolanaChain;
+          transaction: string;
+          buyAmount: string;
+        };
+        const swapSignature = await sendBuilt(
+          solanaWallet,
+          signAndSendTransaction,
+          swap,
+        );
+        const swapConfirmed = await fetch(`/api/pump/coins/${mint}/convert`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ signature: swapSignature }),
+        });
+        if (!swapConfirmed.ok) throw new Error(await readError(swapConfirmed));
+        tradeAmount = swap.buyAmount;
+        setBusy("Buying…");
+      }
       const prepared = await fetch(`/api/pump/coins/${mint}/trade`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           side,
-          amount,
+          amount: tradeAmount,
           slippagePercent,
           tokenSymbol,
           walletAddress: solanaWallet.address,
+          ...(paysWithSol ? { amountInQuote: true } : {}),
         }),
       });
       if (!prepared.ok) throw new Error(await readError(prepared));
@@ -236,17 +295,7 @@ export function PumpTradePanel({ mint }: { mint: string }) {
         transaction: string;
         preview: { venue: PumpTradeVenue };
       };
-      const signed = await signAndSendTransaction({
-        transaction: Uint8Array.from(atob(built.transaction), (char) =>
-          char.charCodeAt(0),
-        ),
-        wallet: solanaWallet,
-        chain: built.chain,
-      });
-      const signature =
-        typeof signed.signature === "string"
-          ? signed.signature
-          : bs58.encode(signed.signature);
+      const signature = await sendBuilt(solanaWallet, signAndSendTransaction, built);
       const confirmed = await fetch(`/api/pump/coins/${mint}/trade`, {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -384,9 +433,11 @@ export function PumpTradePanel({ mint }: { mint: string }) {
               ? quote.error.message
               : "Could not quote this trade."
             : quote.data && quote.data.receive > 0n
-              ? side === "buy"
-                ? `You receive ${formatQuoteAmount(quote.data.receive, quote.data.receiveDecimals)} ${quote.data.receiveSymbol} on ${venueLabel(quote.data.venue)}. Max ${formatQuoteAmount(quote.data.bound, quote.data.payDecimals)} ${quote.data.paySymbol} at ${slippage}% slippage.`
-                : `You receive ${formatQuoteAmount(quote.data.receive, quote.data.receiveDecimals)} ${quote.data.receiveSymbol} on ${venueLabel(quote.data.venue)}. Minimum ${formatQuoteAmount(quote.data.bound, quote.data.receiveDecimals)} at ${slippage}% slippage.`
+              ? side === "buy" && quote.data.convertsFromSol
+                ? `You receive ${formatQuoteAmount(quote.data.receive, quote.data.receiveDecimals)} ${quote.data.receiveSymbol} on ${venueLabel(quote.data.venue)}. ${amount} SOL is swapped into ${quoteSymbol} first.`
+                : side === "buy"
+                  ? `You receive ${formatQuoteAmount(quote.data.receive, quote.data.receiveDecimals)} ${quote.data.receiveSymbol} on ${venueLabel(quote.data.venue)}. Max ${formatQuoteAmount(quote.data.bound, quote.data.payDecimals)} ${quote.data.paySymbol} at ${slippage}% slippage.`
+                  : `You receive ${formatQuoteAmount(quote.data.receive, quote.data.receiveDecimals)} ${quote.data.receiveSymbol} on ${venueLabel(quote.data.venue)}. Minimum ${formatQuoteAmount(quote.data.bound, quote.data.receiveDecimals)} at ${slippage}% slippage.`
               : venue === "pumpswap"
                 ? "Enter an amount to quote PumpSwap."
                 : "Enter an amount to quote the bonding curve."}

@@ -38,7 +38,7 @@ function AdminDashboardAuthed() {
     <main className="mx-auto w-full max-w-[1180px] px-4 pb-24 pt-7 text-foreground sm:px-7 lg:px-10">
       <div className="flex flex-wrap items-start justify-between gap-5 border-b border-line pb-7">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[.24em] text-accent">Rovo operations</p>
+          <p className="text-xs font-bold uppercase tracking-[.24em] text-accent">TryFolio operations</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight sm:text-4xl">Admin</h1>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
             Coins launched on Pump, on Solana mainnet. Creator fees accrue in the fee vault.
@@ -219,7 +219,7 @@ function AdminDenied() {
 
 async function listCoins() {
   const base = process.env.NEXT_PUBLIC_ROVO_API_URL?.replace(/\/+$/, "");
-  if (!base) throw new Error("The Rovo API is not configured.");
+  if (!base) throw new Error("The TryFolio API is not configured.");
   const response = await fetch(`${base}/v1/pump/coins?limit=100`);
   if (!response.ok) throw new Error("Could not load coins.");
   const body = (await response.json()) as { coins: PumpCoin[] };

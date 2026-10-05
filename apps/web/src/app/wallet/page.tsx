@@ -75,7 +75,7 @@ export default function WalletPage() {
         )}
       </section>
       <p className="mt-6 max-w-xl text-sm leading-6 text-muted">
-        Creator fees from coins launched on Rovo accrue in the fee vault.
+        Creator fees from coins launched on TryFolio accrue in the fee vault.
         <Link href="/rewards" className="ml-1 text-accent">
           Rewards
         </Link>{" "}

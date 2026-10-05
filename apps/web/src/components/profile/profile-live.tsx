@@ -222,7 +222,7 @@ function Avatar({
 
 async function listLaunchedCoins(wallet: string) {
   const base = process.env.NEXT_PUBLIC_ROVO_API_URL?.replace(/\/+$/, "");
-  if (!base) throw new Error("The Rovo API is not configured.");
+  if (!base) throw new Error("The TryFolio API is not configured.");
   const response = await fetch(`${base}/v1/pump/coins?limit=100`);
   if (!response.ok) throw new Error("Could not load coins.");
   const body = (await response.json()) as { coins: PumpCoin[] };

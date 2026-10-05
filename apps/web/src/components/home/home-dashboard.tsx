@@ -375,7 +375,7 @@ function EmptyTokens({
       <p className="mt-2 max-w-sm text-sm leading-6 text-muted">
         {filtered
           ? "Nothing in this view matches your search or filters."
-          : "Profile tokens launched on Rovo will show up here."}
+          : "Profile tokens launched on TryFolio will show up here."}
       </p>
       {filtered ? (
         <button
@@ -553,7 +553,7 @@ export function HomeDashboard() {
     queryKey: ["pump-platform-coins"],
     queryFn: async () => {
       const base = process.env.NEXT_PUBLIC_ROVO_API_URL?.replace(/\/+$/, "");
-      if (!base) throw new Error("The Rovo API is not configured.");
+      if (!base) throw new Error("The TryFolio API is not configured.");
       const response = await fetch(`${base}/v1/pump/coins?limit=50`);
       if (!response.ok) throw new Error("Could not load coins.");
       const body = (await response.json()) as { coins: SavedPumpCoin[] };
@@ -601,7 +601,7 @@ export function HomeDashboard() {
         graduated: market?.complete === true,
         pair: {
           label: quote?.symbol ?? "SOL",
-          icon: quote?.iconUrl || "/figma-home/rovo-mark.svg",
+          icon: quote?.iconUrl || "/folio.png",
         },
         meme: true,
       };
@@ -637,7 +637,7 @@ export function HomeDashboard() {
     <div className={styles.dashboard}>
       {coins.isError && (
         <p role="alert" className="px-4 pt-5 text-sm text-danger">
-          Could not load coins from the Rovo API. Check that the API is running.
+          Could not load coins from the TryFolio API. Check that the API is running.
         </p>
       )}
       <MobileHome

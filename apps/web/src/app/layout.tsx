@@ -15,31 +15,32 @@ const description = "Launch and trade tokens on Solana.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://rovo.fun"),
-  title: "Rovo",
+  title: "TryFolio",
   description,
-  applicationName: "Rovo",
+  applicationName: "TryFolio",
+  icons: { icon: "/folio.png", apple: "/folio.png" },
   openGraph: {
     type: "website",
-    siteName: "Rovo",
-    title: "Rovo",
+    siteName: "TryFolio",
+    title: "TryFolio",
     description,
     url: "https://rovo.fun",
     images: [
       {
-        url: "/rovo-banner.png",
-        width: 4200,
-        height: 2160,
-        alt: "Rovo",
+        url: "/folio.png",
+        width: 305,
+        height: 305,
+        alt: "TryFolio",
       },
     ],
   },
   twitter: {
-    card: "summary_large_image",
-    site: "@rovodotfun",
-    creator: "@rovodotfun",
-    title: "Rovo",
+    card: "summary",
+    site: "@tryfoliofun",
+    creator: "@tryfoliofun",
+    title: "TryFolio",
     description,
-    images: ["/rovo-banner.png"],
+    images: ["/folio.png"],
   },
 };
 

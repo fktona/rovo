@@ -1,9 +1,9 @@
 export const asset = (name: string) => `/figma-home/${name}`;
 
 export const icons = {
-  logo: asset("rovo-logo.svg"),
-  logoLight: asset("rovo-logo-light.svg"),
-  logoMark: asset("rovo-mark.svg"),
+  logo: "/folio.png",
+  logoLight: "/folio.png",
+  logoMark: "/folio.png",
   home: asset("home.svg"),
   launch: asset("launch.svg"),
   rewards: asset("rewards.svg"),
@@ -47,28 +47,22 @@ export function AssetIcon({
 }
 
 export function RovoWordmark({
-  alt = "Rovo",
   className = "h-[34px] w-auto",
 }: {
-  alt?: string;
   className?: string;
 }) {
   return (
-    <span className="inline-flex items-center">
+    <span className="inline-flex items-center gap-2">
       <AssetIcon
         src={icons.logo}
         alt=""
-        width={112}
+        width={34}
         height={34}
-        className={`rovo-wordmark-dark block ${className}`}
+        className={`block object-contain ${className}`}
       />
-      <AssetIcon
-        src={icons.logoLight}
-        alt=""
-        width={112}
-        height={34}
-        className={`rovo-wordmark-light hidden ${className}`}
-      />
+      <span className="text-[15px] font-semibold tracking-tight text-foreground">
+        TryFolio
+      </span>
     </span>
   );
 }

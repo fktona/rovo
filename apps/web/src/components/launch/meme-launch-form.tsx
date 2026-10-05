@@ -32,7 +32,6 @@ export function MemeLaunchForm({
   selectedPair,
   openingAmount,
   onOpeningAmount,
-  paySymbol,
   hasOpeningBuy,
   openingValue,
   buyPresets,
@@ -66,7 +65,6 @@ export function MemeLaunchForm({
   selectedPair: LaunchPair | undefined;
   openingAmount: string;
   onOpeningAmount: (value: string) => void;
-  paySymbol: string;
   hasOpeningBuy: boolean;
   openingValue: number;
   buyPresets: readonly string[];
@@ -75,7 +73,7 @@ export function MemeLaunchForm({
   onLaunch: () => void;
 }) {
   const firstBuy = hasOpeningBuy
-    ? `${openingAmount.trim()} ${paySymbol}`
+    ? `${openingAmount.trim()} SOL`
     : "Skipped";
   return (
     <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -200,13 +198,13 @@ export function MemeLaunchForm({
         <div>
           <p className="text-sm font-medium">Initial buy</p>
           <p className="mt-1 text-xs text-muted">
-            Optional. You pay this in {paySymbol}. A blank amount creates the coin only.
+            Optional. Paid in SOL. If the pair is not SOL, that SOL is swapped into the pair first. A blank amount creates the coin only.
           </p>
           <input
             value={openingAmount}
             onChange={(event) => onOpeningAmount(event.target.value)}
             inputMode="decimal"
-            placeholder={pairToken ? `Amount in ${paySymbol}` : "Select a pair first"}
+            placeholder={pairToken ? "Amount in SOL" : "Select a pair first"}
             aria-label="Initial buy amount"
             disabled={!pairToken}
             className={`${field} mt-3 disabled:opacity-50`}

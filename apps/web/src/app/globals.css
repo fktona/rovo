@@ -255,8 +255,6 @@ h1, h2, h3 {
   background: #d6bcfa;
   color: #241339;
 }
-html:not([data-theme="dark"]) .rovo-wordmark-dark { display: none; }
-html:not([data-theme="dark"]) .rovo-wordmark-light { display: block; }
 html:not([data-theme="dark"]) img[src*="/x.svg"],
 html:not([data-theme="dark"]) img[src*="/trending.svg"],
 html:not([data-theme="dark"]) img[src*="/new.svg"],

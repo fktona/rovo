@@ -160,7 +160,6 @@ export function LaunchLive() {
     openingAmount.trim() !== "" &&
     Number.isFinite(openingValue) &&
     openingValue > 0;
-  const paySymbol = selectedPair?.symbol ?? "the quote";
   const creatorFee = creatorFeeLabel(selectedPair?.source);
   const buyPresets = BUY_PRESETS;
 
@@ -285,7 +284,7 @@ export function LaunchLive() {
         description:
           mode === "meme"
             ? memeDescription.trim()
-            : `${displayName} was launched on rovo.fun`,
+            : `${displayName} was launched on TryFolio`,
         xLink: mode === "meme" ? memeTwitter.trim() : `https://x.com/${handle}`,
         website: mode === "meme" ? memeWebsite.trim() : "",
         telegram: mode === "meme" ? memeTelegram.trim() : "",
@@ -436,7 +435,6 @@ export function LaunchLive() {
             selectedPair={selectedPair}
             openingAmount={openingAmount}
             onOpeningAmount={setOpeningAmount}
-            paySymbol={paySymbol}
             hasOpeningBuy={hasOpeningBuy}
             openingValue={openingValue}
             buyPresets={buyPresets}
@@ -678,7 +676,7 @@ export function LaunchLive() {
               Start your market
             </h2>
             <p className="text-base tracking-[0.32px] text-muted">
-              Optional first buy in {paySymbol}. You pay it from your wallet. A blank amount creates the coin only.
+              Optional first buy in SOL. If this pair is not SOL, that SOL is swapped into the pair before the coin is created. A blank amount creates the coin only.
             </p>
             <label className="mt-8 block text-base" htmlFor="opening-buy">
               Initial buy
@@ -687,7 +685,7 @@ export function LaunchLive() {
                 inputMode="decimal"
                 value={openingAmount}
                 onChange={(event) => setOpeningAmount(event.target.value)}
-                placeholder={`e.g 0.5 ${paySymbol}`}
+                placeholder="e.g 0.5 SOL"
                 className="mt-3 h-[50px] w-full rounded-[10px] border border-line bg-surface px-3 text-sm text-foreground outline-none placeholder:text-muted focus:border-accent"
               />
             </label>
@@ -705,7 +703,7 @@ export function LaunchLive() {
                       selected ? "border-accent" : "border-line"
                     }`}
                   >
-                    {amount} {paySymbol}
+                    {amount} SOL
                   </button>
                 );
               })}
@@ -751,7 +749,7 @@ export function LaunchLive() {
                 </p>
                 <p className="text-xl">
                   {hasOpeningBuy
-                    ? `${openingAmount.trim()} ${paySymbol}`
+                    ? `${openingAmount.trim()} SOL`
                     : "Skipped"}
                 </p>
               </div>

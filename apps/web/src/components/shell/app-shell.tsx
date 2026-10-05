@@ -187,7 +187,7 @@ function Sidebar({
       >
         <Link
           href="/"
-          aria-label="Rovo home"
+          aria-label="TryFolio home"
           className={`group relative flex h-16 shrink-0 items-center lg:h-20 ${itemAlign}`}
         >
           <span
@@ -209,7 +209,7 @@ function Sidebar({
             <RovoWordmark className="h-[34px] w-auto" />
           </span>
           <span aria-hidden="true" className={tooltipClass}>
-            Rovo
+            TryFolio
           </span>
         </Link>
         <nav className="flex flex-1 flex-col gap-1">
@@ -449,7 +449,7 @@ function AccountMenu({
               </Link>
             </div>
             <a
-              href="https://x.com/rovodotfun"
+              href="https://x.com/tryfoliofun"
               aria-label="X"
               target="_blank"
               rel="noreferrer"
@@ -461,7 +461,7 @@ function AccountMenu({
           <Link href="/docs" onClick={onClose} className="mt-3 inline-flex">
             Developers
           </Link>
-          <p className="mt-3">© 2026 Rovo</p>
+          <p className="mt-3">© 2026 TryFolio</p>
         </div>
       </div>
     </div>
@@ -628,7 +628,7 @@ function Header({
       <header className={styles.header}>
         <Link
           href="/"
-          aria-label="Rovo home"
+          aria-label="TryFolio home"
           className="flex h-11 shrink-0 items-center md:hidden"
         >
           <RovoWordmark className="h-[22px] w-auto" />
@@ -701,7 +701,7 @@ function Header({
           />
         </label>
         <a
-          href="https://x.com/rovodotfun"
+          href="https://x.com/tryfoliofun"
           aria-label="X"
           target="_blank"
           rel="noreferrer"
@@ -727,7 +727,7 @@ function Footer() {
   return (
     <footer className={styles.footer} id="footer-links">
       <div className={styles.footerLinks}>
-        <a href="https://x.com/rovodotfun" aria-label="X" target="_blank" rel="noreferrer">
+        <a href="https://x.com/tryfoliofun" aria-label="X" target="_blank" rel="noreferrer">
           <AssetIcon src={icons.x} width={16} height={16} />
         </a>
         <a href="/rewards">Rewards</a>
@@ -749,7 +749,7 @@ function Footer() {
       ) : (
         <span className="shrink-0 font-mono">$ROVO n/a</span>
       )}
-      <span className="shrink-0">© 2026 Rovo</span>
+      <span className="shrink-0">© 2026 TryFolio</span>
     </footer>
   );
 }

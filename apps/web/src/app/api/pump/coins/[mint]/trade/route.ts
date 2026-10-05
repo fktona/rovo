@@ -11,7 +11,7 @@ import {
 
 function tradeError(error: unknown) {
   const message = error instanceof Error ? error.message : "Could not quote this trade.";
-  const status = /not on Pump|does not exist|not a token mint|not open yet|too small|Enter an amount|Slippage|Solana address/.test(
+  const status = /not on Pump|does not exist|not a token mint|not open yet|too small|Enter an amount|Slippage|Solana address|CLMM|Swap SOL/.test(
     message,
   )
     ? 400
@@ -29,6 +29,7 @@ function serializePreview(preview: PumpTradePreview) {
     receiveSymbol: preview.receiveSymbol,
     paySymbol: preview.paySymbol,
     payDecimals: preview.payDecimals,
+    convertsFromSol: preview.convertsFromSol === true,
   };
 }
 
@@ -85,6 +86,7 @@ export async function POST(
     slippagePercent?: unknown;
     tokenSymbol?: unknown;
     walletAddress?: unknown;
+    amountInQuote?: unknown;
   };
   if (typeof input.signature === "string") {
     try {
@@ -103,6 +105,7 @@ export async function POST(
     return Response.json({ error: "Slippage must be between 0 and 50 percent." }, { status: 400 });
   }
   const tokenSymbol = typeof input.tokenSymbol === "string" ? input.tokenSymbol : undefined;
+  const amountInQuote = input.amountInQuote === true;
   try {
     if (typeof input.walletAddress === "string") {
       if (!readMint(input.walletAddress)) {
@@ -114,6 +117,7 @@ export async function POST(
         amount: input.amount,
         slippagePercent,
         ...(tokenSymbol ? { tokenSymbol } : {}),
+        ...(amountInQuote ? { amountInQuote: true } : {}),
         walletAddress: input.walletAddress,
       });
       return Response.json({
@@ -128,6 +132,7 @@ export async function POST(
       amount: input.amount,
       slippagePercent,
       ...(tokenSymbol ? { tokenSymbol } : {}),
+      ...(amountInQuote ? { amountInQuote: true } : {}),
     });
     return Response.json({ preview: serializePreview(preview) });
   } catch (error) {

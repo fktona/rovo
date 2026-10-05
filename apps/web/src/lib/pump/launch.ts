@@ -3,6 +3,7 @@ import {
   PUMP_SDK,
   getBuyTokenAmountFromSolAmount,
 } from "@pump-fun/pump-sdk";
+import { Raydium } from "@raydium-io/raydium-sdk-v2";
 import {
   ComputeBudgetProgram,
   Keypair,
@@ -22,6 +23,7 @@ import {
   type LaunchInput,
   type LaunchResult,
 } from "@/lib/raydium/launch-shared";
+import { swapSolForTokenB } from "@/lib/raydium/raydium-clmm-swap";
 import { creatorFeeBpsForSource, parseTokenAmount } from "./fees";
 import { ensureLaunchLookupTable, sharedAccountKeys } from "./lookup-table";
 import type { PumpLaunchPair } from "./quotes";
@@ -84,7 +86,7 @@ export async function launchPumpToken(
     }
   }
   const feeBps = creatorFeeBps === undefined ? undefined : new BN(creatorFeeBps);
-  const quoteUnits = parseTokenAmount(input.customBuy, resolved.decimals);
+  const solLamports = parseTokenAmount(input.customBuy, 9);
 
   input.onStatus?.("Uploading token metadata.");
   const uploaded = await uploadTokenMetadata(input.imageFile, {
@@ -111,9 +113,35 @@ export async function launchPumpToken(
     ...(feeBps ? { creatorFeeBps: feeBps } : {}),
     holderReward: false,
   };
-  const quoteAmount = new BN(quoteUnits.toString());
+  let quoteAmount = new BN(solLamports.toString());
+  if (solLamports > 0n && input.pair.source !== "sol") {
+    input.onStatus?.(
+      `Approve the SOL to ${input.pair.symbol} conversion.`,
+    );
+    const raydium = await Raydium.load({
+      connection,
+      cluster: "mainnet",
+      owner: user,
+      disableFeatureCheck: true,
+      disableLoadToken: true,
+    });
+    const swap = await swapSolForTokenB({
+      raydium,
+      connection,
+      owner: user,
+      quoteMint: resolved.mint,
+      ticker: input.pair.symbol,
+      buyLamports: solLamports.toString(),
+      chain,
+      sendTransaction: input.sendTransaction,
+    });
+    quoteAmount = swap.amount;
+    input.onStatus?.(
+      `Conversion ${swap.signature.slice(0, 12)}… confirmed. Approve the Pump launch.`,
+    );
+  }
   const tokenAmount =
-    quoteUnits === 0n
+    solLamports === 0n
       ? null
       : getBuyTokenAmountFromSolAmount({
           global,
@@ -223,7 +251,7 @@ export async function launchPumpToken(
             ComputeBudgetProgram.programId,
             ...sharedAccountKeys(instructions, decoy),
           ],
-          onStatus: input.onStatus,
+          ...(input.onStatus ? { onStatus: input.onStatus } : {}),
           send: (setup) => sendInstructions(setup, []).then(() => undefined),
         }),
       ];

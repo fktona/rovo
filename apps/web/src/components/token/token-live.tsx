@@ -286,7 +286,7 @@ export function TokenLive({ token }: { token: string }) {
           )}
         </div>
         <p className="mt-4 text-xs text-muted">
-          Selling and price quotes are not yet available in Rovo. This form will
+          Selling and price quotes are not yet available in TryFolio. This form will
           not send a trade without a minimum output.
         </p>
       </section>
@@ -305,7 +305,7 @@ export function TokenLive({ token }: { token: string }) {
       {tab === "Activity" && (
         <section className="py-10 text-sm text-muted">
           Live trade activity is not indexed yet. Contract and reward
-          information below comes from the Rovo API and chain.
+          information below comes from the TryFolio API and chain.
         </section>
       )}
       {tab === "Rewards" && (

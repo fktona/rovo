@@ -43,7 +43,7 @@ export function RewardsLive() {
     >
       <h1 className="text-[28px] font-bold tracking-[-0.6px] sm:text-3xl">Rewards</h1>
       <p className="mt-1 text-sm text-muted">
-        Uncollected creator fees from coins launched on Rovo.
+        Uncollected creator fees from coins launched on TryFolio.
       </p>
       <p className="mt-3 max-w-xl text-sm leading-6 text-muted">
         Fees accrue in the fee vault. The Pump curve balance is from coins

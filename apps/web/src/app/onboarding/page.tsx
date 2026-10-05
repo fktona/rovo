@@ -54,7 +54,7 @@ export default function OnboardingPage() {
           <div className="flex items-center gap-3">
             <AssetIcon src={icons.logoMark} alt="" width={36} height={36} />
             <span className="text-sm font-semibold uppercase tracking-[0.2em] text-accent">
-              Welcome to Rovo
+              Welcome to TryFolio
             </span>
           </div>
         </div>
@@ -68,7 +68,7 @@ export default function OnboardingPage() {
           <p className="mt-4 max-w-xl text-base leading-relaxed text-muted">
             Linking X proves which profile belongs to you. It lets you launch
             your own token, scout a profile, and later claim a token someone
-            scouted for you. You can explore Rovo without linking now.
+            scouted for you. You can explore TryFolio without linking now.
           </p>
           <div className="mt-8 rounded-2xl border border-line bg-surface-raised p-4 md:p-5">
             <div className="flex items-start gap-4">
@@ -119,7 +119,7 @@ export default function OnboardingPage() {
                 onClick={continueToApp}
                 className="min-h-12 flex-1 rounded-xl bg-action px-5 font-semibold text-ink"
               >
-                Continue to Rovo
+                Continue to TryFolio
               </button>
             )}
             <button
