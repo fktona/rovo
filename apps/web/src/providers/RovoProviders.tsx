@@ -80,7 +80,7 @@ export function RovoProviders({
         >,
         loginMethods: ["wallet", "twitter", "email" , "google"],
         appearance: {
-          walletChainType: "ethereum-and-solana",
+          walletChainType: "solana-only",
         },
         externalWallets: {
           solana: { connectors: toSolanaWalletConnectors() },

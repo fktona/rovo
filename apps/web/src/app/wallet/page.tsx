@@ -1,90 +1,41 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { formatUnits, zeroAddress, type Address } from "viem";
+import { useCreateWallet, useWallets } from "@privy-io/react-auth/solana";
 import { useToast } from "@/components/toast/toast-provider";
 import { useRovoIdentity } from "@/hooks/useRovoIdentity";
-import { useRovoActions } from "@/hooks/useRovoActions";
-import {
-  usePendingFees,
-  useTokenBalance,
-  useTokenInfo,
-} from "@/hooks/useRovoQueries";
-import { getPairChoice, pairChoices } from "@/lib/pairs";
-
-const usdg = pairChoices.find((pair) => pair.symbol === "USDG")?.address;
-
-function BalanceRow({
-  asset,
-  account,
-  onWithdraw,
-  busy,
-}: {
-  asset: Address;
-  account?: Address;
-  onWithdraw: (asset: Address) => void;
-  busy: boolean;
-}) {
-  const balance = useTokenBalance(asset, account);
-  const pending = usePendingFees(asset, account);
-  const info = useTokenInfo(asset === zeroAddress ? undefined : asset);
-  const label =
-    getPairChoice(asset)?.symbol ?? (asset === zeroAddress ? "ETH" : "Token");
-  const decimals = asset === zeroAddress ? 18 : info.data?.decimals;
-  return (
-    <div className="flex flex-wrap items-center justify-between gap-4 border-t border-line py-5">
-      <div>
-        <strong>{label}</strong>
-        <p className="mt-1 text-sm text-muted">
-          Wallet:{" "}
-          {balance.data === undefined || decimals === undefined
-            ? "—"
-            : formatUnits(balance.data, decimals)}
-        </p>
-        <p className="text-sm text-muted">
-          Claimable fees:{" "}
-          {pending.data === undefined || decimals === undefined
-            ? "—"
-            : formatUnits(pending.data, decimals)}
-        </p>
-      </div>
-      <button
-        type="button"
-        disabled={busy || !pending.data || pending.data === 0n}
-        onClick={() => onWithdraw(asset)}
-        className="rounded-xl bg-action px-5 py-3 text-sm font-semibold text-ink disabled:opacity-40"
-      >
-        Withdraw fees
-      </button>
-    </div>
-  );
-}
 
 export default function WalletPage() {
   const identity = useRovoIdentity();
-  const wallet = identity.wallets[0]?.address as Address | undefined;
-  const actions = useRovoActions(wallet);
-  const queryClient = useQueryClient();
+  const { wallets } = useWallets();
+  const { createWallet } = useCreateWallet();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
-  const withdraw = async (asset: Address) => {
-    if (!actions) return;
+  const [copied, setCopied] = useState(false);
+  const wallet = wallets[0];
+
+  const create = async () => {
     setBusy(true);
     try {
-      await actions.withdrawFees(asset);
-      toast.success("Withdrawal confirmed.");
-      await queryClient.invalidateQueries({ queryKey: ["rovo"] });
+      await createWallet();
     } catch (cause) {
-      toast.walletError(cause, "Withdrawal failed.");
+      toast.walletError(cause, "Could not create a Solana wallet.");
     } finally {
       setBusy(false);
     }
   };
+  const copy = async () => {
+    if (!wallet) return;
+    await navigator.clipboard.writeText(wallet.address);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1500);
+  };
+
   return (
     <main className="mx-auto w-full max-w-3xl px-4 py-8 text-foreground sm:px-6">
       <h1 className="text-3xl font-bold">Wallet</h1>
-      <p className="mt-2 text-muted">Robinhood Chain assets and Rovo fees.</p>
+      <p className="mt-2 text-muted">Your Solana wallet on mainnet.</p>
       <section className="mt-7 rounded-2xl border border-line bg-surface p-6">
         {!identity.authenticated ? (
           <button
@@ -97,31 +48,39 @@ export default function WalletPage() {
         ) : !wallet ? (
           <button
             type="button"
-            onClick={() => identity.connectOrCreateWallet()}
-            className="rounded-xl bg-action px-6 py-3 font-semibold text-ink"
+            disabled={busy}
+            onClick={() => void create()}
+            className="rounded-xl bg-action px-6 py-3 font-semibold text-ink disabled:opacity-50"
           >
-            Connect wallet
+            {busy ? "Creating…" : "Create Solana wallet"}
           </button>
         ) : (
           <>
-            <p className="mb-4 break-all text-sm text-muted">{wallet}</p>
-            <BalanceRow
-              asset={zeroAddress}
-              account={wallet}
-              busy={busy}
-              onWithdraw={withdraw}
-            />
-            {usdg && (
-              <BalanceRow
-                asset={usdg}
-                account={wallet}
-                busy={busy}
-                onWithdraw={withdraw}
-              />
-            )}
+            <p className="text-xs text-muted">Solana wallet</p>
+            <p className="mt-2 break-all font-medium">{wallet.address}</p>
+            <div className="mt-4 flex flex-wrap gap-4 text-sm font-semibold">
+              <button type="button" onClick={() => void copy()} className="text-accent">
+                {copied ? "Copied" : "Copy"}
+              </button>
+              <a
+                className="text-accent"
+                href={`https://solscan.io/account/${wallet.address}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                View on Solscan
+              </a>
+            </div>
           </>
         )}
       </section>
+      <p className="mt-6 max-w-xl text-sm leading-6 text-muted">
+        Creator fees from coins launched on Rovo accrue in the fee vault.
+        <Link href="/rewards" className="ml-1 text-accent">
+          Rewards
+        </Link>{" "}
+        shows what is waiting there.
+      </p>
     </main>
   );
 }

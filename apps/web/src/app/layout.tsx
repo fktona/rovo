@@ -11,7 +11,7 @@ const manrope = localFont({
   display: "swap",
 });
 
-const description = "Make a market around a profile. Launch, scout, and trade profile tokens on Robinhood Chain.";
+const description = "Launch and trade tokens on Solana.";
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://rovo.fun"),

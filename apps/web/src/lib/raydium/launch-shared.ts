@@ -80,12 +80,12 @@ export async function uploadTokenMetadata(
 }
 
 export function getNetwork() {
-  const devnet = process.env.NEXT_PUBLIC_RAYDIUM_CLUSTER === "devnet";
   return {
-    devnet,
-    chain: (devnet ? "solana:devnet" : "solana:mainnet") as SolanaChain,
+    devnet: false,
+    chain: "solana:mainnet" as const,
     connection: new Connection(
-      process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
+      process.env.SOLANA_RPC_URL ||
+        process.env.NEXT_PUBLIC_SOLANA_RPC_URL ||
         "https://api.mainnet-beta.solana.com",
       "confirmed",
     ),

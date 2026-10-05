@@ -107,7 +107,7 @@ export function TokenLive({ token }: { token: string }) {
   if (launch.isLoading || onchain.isLoading)
     return (
       <main className="p-8 text-muted">
-        Loading token from Rovo and Robinhood Chain…
+        Loading token from Pump…
       </main>
     );
   if (launch.isError || onchain.isError || !launch.data || !onchain.data)
@@ -164,7 +164,7 @@ export function TokenLive({ token }: { token: string }) {
           ],
           ["Creator tax", `${launch.data.creatorTaxBps / 100}%`],
           ["Status", launch.data.claimed ? "Claimed" : "Unclaimed"],
-          ["Network", "Robinhood Chain"],
+          ["Network", "Solana"],
         ].map(([label, value]) => (
           <div
             key={label}

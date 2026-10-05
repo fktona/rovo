@@ -50,6 +50,13 @@
       "when": 1790610000000,
       "tag": "0006_rovo_token",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791007800000,
+      "tag": "0007_pump_coins",
+      "breakpoints": true
     }
   ]
 }

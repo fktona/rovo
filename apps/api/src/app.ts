@@ -10,6 +10,7 @@ import type {
   RovoRepository,
 } from "./types.js";
 import type { IdentityAttestationService } from "./attestations.js";
+import type { PumpCoinInput, PumpCoinRecord } from "./pump-coins.js";
 
 const addressSchema = z.custom<Address>(
   (value) => typeof value === "string" && /^0x[a-fA-F0-9]{40}$/.test(value),
@@ -38,6 +39,9 @@ export function buildServer(deps: {
     transactionHash: `0x${string}`;
     handle?: string;
   }) => Promise<LaunchView>;
+  listPumpCoins?: (limit: number) => Promise<PumpCoinRecord[]>;
+  getPumpCoin?: (mint: string) => Promise<PumpCoinRecord | null>;
+  savePumpCoin?: (input: PumpCoinInput) => Promise<PumpCoinRecord>;
 }) {
   const app = Fastify({ logger: false });
 
@@ -194,6 +198,63 @@ export function buildServer(deps: {
     return {
       claims: await deps.repository.getRewardClaims(token.data, account.data),
     };
+  });
+
+  const solanaAddress = z
+    .string()
+    .regex(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/);
+
+  app.get("/v1/pump/coins", async (request, reply) => {
+    if (!deps.listPumpCoins) {
+      return reply.code(503).send({ error: "pump coins unavailable" });
+    }
+    const query = z
+      .object({ limit: z.coerce.number().int().min(1).max(100).default(50) })
+      .safeParse(request.query);
+    if (!query.success) {
+      return reply.code(400).send({ error: "invalid pump coin limit" });
+    }
+    return { coins: await deps.listPumpCoins(query.data.limit) };
+  });
+
+  app.get("/v1/pump/coins/:mint", async (request, reply) => {
+    if (!deps.getPumpCoin) {
+      return reply.code(503).send({ error: "pump coins unavailable" });
+    }
+    const mint = solanaAddress.safeParse(
+      (request.params as { mint: string }).mint,
+    );
+    if (!mint.success) {
+      return reply.code(400).send({ error: "invalid pump mint" });
+    }
+    const coin = await deps.getPumpCoin(mint.data);
+    if (!coin) return reply.code(404).send({ error: "pump coin not found" });
+    return coin;
+  });
+
+  app.post("/v1/pump/coins", async (request, reply) => {
+    if (!deps.savePumpCoin) {
+      return reply.code(503).send({ error: "pump coins unavailable" });
+    }
+    const body = z
+      .object({
+        mint: solanaAddress,
+        name: z.string().trim().min(1).max(32).optional(),
+        symbol: z.string().trim().min(1).max(13).optional(),
+        imageUrl: z.string().trim().url().max(500).optional(),
+        metadataUri: z.string().trim().min(1).max(200).optional(),
+        quoteMint: solanaAddress.optional(),
+        launcherWallet: solanaAddress.optional(),
+        signature: z
+          .string()
+          .regex(/^[1-9A-HJ-NP-Za-km-z]{64,128}$/)
+          .optional(),
+      })
+      .safeParse(request.body);
+    if (!body.success) {
+      return reply.code(400).send({ error: "invalid pump coin" });
+    }
+    return deps.savePumpCoin(body.data);
   });
 
   app.get("/v1/rovo-token", async () => ({

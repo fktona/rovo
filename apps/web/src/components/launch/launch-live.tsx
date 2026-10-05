@@ -13,8 +13,9 @@ import { useRovoIdentity } from "@/hooks/useRovoIdentity";
 import { useXAccount, useXSearch } from "@/hooks/useRovoQueries";
 import type { XAccountView } from "@/lib/api";
 import { useToast } from "@/components/toast/toast-provider";
-import { launchPairs, type LaunchPair } from "@/lib/raydium/pairs";
-import { launchRaydiumToken } from "@/lib/raydium/raydium-launch";
+import { creatorFeeLabel } from "@/lib/pump/fees";
+import { launchPumpToken } from "@/lib/pump/launch";
+import type { PumpLaunchPair } from "@/lib/pump/quotes";
 
 type Mode = "self" | "scout" | "meme";
 type PairKind = "all" | "xstocks" | "crypto";
@@ -59,7 +60,7 @@ type LaunchedToken = {
   signature: string;
   kind: Mode;
   pair: string;
-  creatorTax: number;
+  creatorFee: string;
 };
 
 export function LaunchLive() {
@@ -87,7 +88,10 @@ export function LaunchLive() {
   const [memeSymbol, setMemeSymbol] = useState("");
   const [memeFile, setMemeFile] = useState<File | null>(null);
   const [memePreview, setMemePreview] = useState<string | null>(null);
-  const [memeTax, setMemeTax] = useState(0);
+  const [pumpPairs, setPumpPairs] = useState<PumpLaunchPair[]>([]);
+  const [pairsStatus, setPairsStatus] = useState<"loading" | "ready" | "error">(
+    "loading",
+  );
   const [memeDescription, setMemeDescription] = useState("");
   const [memeWebsite, setMemeWebsite] = useState("");
   const [memeTelegram, setMemeTelegram] = useState("");
@@ -125,22 +129,47 @@ export function LaunchLive() {
     (mode === "scout" ? (scoutProfile?.followers ?? null) : null);
   const visiblePairs = useMemo(() => {
     const query = search.toLowerCase().trim();
-    return launchPairs.filter((pair) => {
+    return pumpPairs.filter((pair) => {
       const kindMatches = pairKind === "all" || pair.kind === pairKind;
       const textMatches = `${pair.symbol} ${pair.name}`
         .toLowerCase()
         .includes(query);
       return kindMatches && textMatches;
     });
-  }, [pairKind, search]);
-  const selectedPair = launchPairs.find((pair) => pair.mint === pairToken);
+  }, [pairKind, pumpPairs, search]);
+  const selectedPair = pumpPairs.find((pair) => pair.mint === pairToken);
   const openingValue = Number(openingAmount);
   const hasOpeningBuy =
     openingAmount.trim() !== "" &&
     Number.isFinite(openingValue) &&
     openingValue > 0;
-  const paySymbol = "SOL";
+  const paySymbol = selectedPair?.symbol ?? "the quote";
+  const creatorFee = creatorFeeLabel(selectedPair?.source);
   const buyPresets = BUY_PRESETS;
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/pump/quotes")
+      .then(async (response) => {
+        const data = (await response.json()) as {
+          quotes?: PumpLaunchPair[];
+          error?: string;
+        };
+        if (!response.ok || !data.quotes) {
+          throw new Error(data.error || "Pump quotes are unavailable.");
+        }
+        if (!cancelled) {
+          setPumpPairs(data.quotes);
+          setPairsStatus("ready");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setPairsStatus("error");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(
@@ -191,8 +220,8 @@ export function LaunchLive() {
       );
       return;
     }
-    if (symbol.replace(/^\$/, "").length > 10) {
-      setError("Raydium symbols can be at most 10 characters.");
+    if (symbol.replace(/^\$/, "").length > 13) {
+      setError("Symbols can be at most 13 characters.");
       return;
     }
     setStep(2);
@@ -217,11 +246,11 @@ export function LaunchLive() {
       return;
     }
     setBusy(true);
-    setBusyLabel("Preparing the Raydium launch…");
+    setBusyLabel("Preparing the Pump launch…");
     try {
-      const result = await launchRaydiumToken({
+      const result = await launchPumpToken({
         walletAddress: solanaWallet.address,
-        name: displayName,
+        name: displayName.slice(0, 32),
         ticker: symbol,
         description:
           mode === "meme"
@@ -234,7 +263,7 @@ export function LaunchLive() {
         imageFile: mode === "meme" ? memeFile : null,
         ...(mode !== "meme" && avatar ? { imageUrl: avatar } : {}),
         pairedAsset: selectedPair,
-        quoteMintAddress: selectedPair.mint,
+        pair: selectedPair,
         onStatus: setBusyLabel,
         sendTransaction: async (transaction, chain) =>
           (
@@ -245,6 +274,12 @@ export function LaunchLive() {
             })
           ).signature,
       });
+      if (!result.indexed) {
+        toast.error(
+          "Token launched",
+          "It was not saved to the platform list.",
+        );
+      }
       setLaunched({
         name: displayName,
         symbol,
@@ -252,7 +287,7 @@ export function LaunchLive() {
         signature: result.signature,
         kind: mode,
         pair: selectedPair.symbol,
-        creatorTax: memeTax,
+        creatorFee,
       });
     } catch (cause) {
       toast.walletError(cause, "The launch did not finish.");
@@ -341,8 +376,7 @@ export function LaunchLive() {
             onTelegram={setMemeTelegram}
             twitter={memeTwitter}
             onTwitter={setMemeTwitter}
-            tax={memeTax}
-            onTax={setMemeTax}
+            creatorFee={creatorFee}
             preview={memePreview}
             onImage={(file) => {
               setError("");
@@ -362,6 +396,7 @@ export function LaunchLive() {
               setMemeFile(file);
             }}
             pairs={visiblePairs}
+            pairsMessage={pairListMessage(pairsStatus)}
             pairKind={pairKind}
             onPairKind={setPairKind}
             search={search}
@@ -395,8 +430,8 @@ export function LaunchLive() {
                 setError("Enter a name and a ticker.");
                 return;
               }
-              if (!/^[A-Za-z][A-Za-z0-9]{0,9}$/.test(memeSymbol.trim())) {
-                setError("Use a ticker of up to 10 letters and numbers, starting with a letter.");
+              if (!/^[A-Za-z][A-Za-z0-9]{0,12}$/.test(memeSymbol.trim())) {
+                setError("Use a ticker of up to 13 letters and numbers, starting with a letter.");
                 return;
               }
               if (!pairToken) {
@@ -603,7 +638,7 @@ export function LaunchLive() {
             </div>
             {visiblePairs.length === 0 && (
               <p className="mt-4 text-sm text-muted">
-                No pair tokens match.
+                {pairListMessage(pairsStatus)}
               </p>
             )}
             <StepFooter
@@ -620,7 +655,7 @@ export function LaunchLive() {
               Start your market
             </h2>
             <p className="text-base tracking-[0.32px] text-muted">
-              Optional first buy in SOL. If the pair is not SOL, Raydium swaps SOL into that token before the launch.
+              Optional first buy in {paySymbol}. You pay it from your wallet. A blank amount creates the coin only.
             </p>
             <label className="mt-8 block text-base" htmlFor="opening-buy">
               Initial buy
@@ -629,7 +664,7 @@ export function LaunchLive() {
                 inputMode="decimal"
                 value={openingAmount}
                 onChange={(event) => setOpeningAmount(event.target.value)}
-                placeholder="e.g 0.5 SOL"
+                placeholder={`e.g 0.5 ${paySymbol}`}
                 className="mt-3 h-[50px] w-full rounded-[10px] border border-line bg-surface px-3 text-sm text-foreground outline-none placeholder:text-muted focus:border-accent"
               />
             </label>
@@ -671,7 +706,7 @@ export function LaunchLive() {
                   Pair
                 </p>
                 <div className="flex items-center gap-2">
-                  {selectedPair?.iconUrl && (
+                  {selectedPair?.iconUrl ? (
                     <img
                       src={selectedPair.iconUrl}
                       alt=""
@@ -679,6 +714,10 @@ export function LaunchLive() {
                       height={40}
                       className="size-10 rounded-full object-contain"
                     />
+                  ) : (
+                    <span className="flex size-10 items-center justify-center rounded-full bg-surface-raised text-sm font-semibold uppercase">
+                      {selectedPair?.symbol.slice(0, 1)}
+                    </span>
                   )}
                   <p className="text-xl">{selectedPair?.symbol}</p>
                 </div>
@@ -689,24 +728,20 @@ export function LaunchLive() {
                 </p>
                 <p className="text-xl">
                   {hasOpeningBuy
-                    ? `${openingAmount.trim()} SOL`
+                    ? `${openingAmount.trim()} ${paySymbol}`
                     : "Skipped"}
                 </p>
               </div>
             </div>
             <div className="mt-6 h-px bg-surface-raised" />
             <div className="mt-6 rounded-[10px] bg-surface-raised px-6 py-5">
-              <p className="text-base">Fee distribution</p>
-              <div className="mt-6 flex h-2.5 overflow-hidden rounded-full">
-                <div className="h-full w-[70%] bg-positive" />
-                <div className="h-full w-[20%] bg-[#9945ff]" />
-                <div className="h-full w-[10%] bg-[#fbad15]" />
-              </div>
-              <div className="mt-4 flex flex-wrap gap-3 text-xs font-medium text-muted">
-                <Legend color="#43e660" label="Creators 70%" />
-                <Legend color="#9945ff" label="Holders 20%" />
-                <Legend color="#fbad15" label="Platform 10%" />
-              </div>
+              <p className="text-base">Creator fee</p>
+              <p className="mt-2 text-[32px] font-bold leading-none tracking-[-1px] text-accent">
+                {creatorFee}
+              </p>
+              <p className="mt-3 text-sm text-muted">
+                Quote pairs other than SOL and USDC lock a 2% creator fee in the fee vault. SOL and USDC use Pump&apos;s schedule.
+              </p>
             </div>
             <StepFooter
               onBack={() => setStep(3)}
@@ -714,7 +749,7 @@ export function LaunchLive() {
               continueDisabled={
                 busy || !pairToken || !displayName || !symbol
               }
-              continueLabel={busy ? busyLabel : "Launch on Raydium"}
+              continueLabel={busy ? busyLabel : "Launch on Pump"}
             />
           </div>
         )}
@@ -833,7 +868,7 @@ function PairCard({
   selected,
   onSelect,
 }: {
-  pair: LaunchPair;
+  pair: PumpLaunchPair;
   selected: boolean;
   onSelect: () => void;
 }) {
@@ -846,13 +881,19 @@ function PairCard({
         selected ? "border border-accent" : "border border-transparent"
       }`}
     >
-      <img
-        src={pair.iconUrl}
-        alt=""
-        width={34}
-        height={34}
-        className="size-[34px] shrink-0 rounded-full object-contain"
-      />
+      {pair.iconUrl ? (
+        <img
+          src={pair.iconUrl}
+          alt=""
+          width={34}
+          height={34}
+          className="size-[34px] shrink-0 rounded-full object-contain"
+        />
+      ) : (
+        <span className="flex size-[34px] shrink-0 items-center justify-center rounded-full bg-surface text-xs font-semibold uppercase">
+          {pair.symbol.slice(0, 1)}
+        </span>
+      )}
       <span className="min-w-0">
         <strong className="block truncate text-base font-normal">
           {pair.symbol}
@@ -865,16 +906,10 @@ function PairCard({
   );
 }
 
-function Legend({ color, label }: { color: string; label: string }) {
-  return (
-    <span className="flex items-center gap-1">
-      <span
-        className="size-[9px] rounded-[1px]"
-        style={{ backgroundColor: color }}
-      />
-      {label}
-    </span>
-  );
+function pairListMessage(status: "loading" | "ready" | "error") {
+  if (status === "loading") return "Loading Pump pairs…";
+  if (status === "error") return "Pump pairs are unavailable.";
+  return "No pair tokens match.";
 }
 
 function StepFooter({
@@ -924,15 +959,7 @@ function LaunchSuccessDialog({
   const headline = profile
     ? `${handle} is now live on ROVO`
     : `${launch.name} is now live on ROVO`;
-  const stat =
-    launch.kind === "scout"
-      ? { label: "Rover royalty", value: "15%" }
-      : launch.kind === "self"
-        ? { label: "Creator share", value: "70%" }
-        : {
-            label: "Creator tax",
-            value: `${Number(launch.creatorTax.toFixed(1))}%`,
-          };
+  const stat = { label: "Creator fee", value: launch.creatorFee };
   const shareText = profile ? `Share with ${handle}` : `Share ${launch.name}`;
   const share = () => {
     const page = launch.mint

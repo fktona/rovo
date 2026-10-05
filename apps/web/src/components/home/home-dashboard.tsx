@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
-import { formatUnits } from "viem";
+import { useQuery } from "@tanstack/react-query";
 import { AssetIcon, icons } from "./assets";
 import type { Pair, Token } from "./data";
-import { useLaunches } from "@/hooks/useRovoQueries";
-import { pairChoices, pairIconSrc } from "@/lib/pairs";
+import { useAppSearch } from "../shell/app-shell";
 import { formatPriceUsd, formatUsd } from "@/lib/token-market";
 import { styles } from "./styles";
-import { useAppSearch } from "../shell/app-shell";
+import { pairIconSrc } from "@/lib/pairs";
+import { launchPairs } from "@/lib/raydium/pairs";
+import type { PumpMarketCoin } from "@/lib/pump/client";
 
 const views = [
   { label: "Trending", icon: icons.trending, width: 22, height: 12 },
@@ -19,12 +20,24 @@ const views = [
 
 type View = (typeof views)[number]["label"];
 
+type SavedPumpCoin = {
+  mint: string;
+  name: string | null;
+  symbol: string | null;
+  imageUrl: string | null;
+  quoteMint: string | null;
+  createdAt: string;
+};
+
 const creatorsPair: Pair = { label: "Creators", icon: icons.creators };
 const memesPair: Pair = { label: "Memes", icon: icons.launch };
-const featuredPairs: Pair[] = pairChoices.slice(0, 10).map((choice) => ({
-  label: choice.symbol,
-  icon: choice.iconUrl,
-}));
+const featuredPairs: Pair[] = launchPairs
+  .filter((pair) => pair.kind === "crypto")
+  .slice(0, 10)
+  .map((pair) => ({
+    label: pair.symbol,
+    icon: pair.iconUrl,
+  }));
 
 function PairIcon({ pair }: { pair: Pair }) {
   const [failed, setFailed] = useState(false);
@@ -71,14 +84,14 @@ function PairFilters({
       ? {
           label: selected,
           icon:
-            pairChoices.find((choice) => choice.symbol === selected)?.iconUrl ??
+            launchPairs.find((choice) => choice.symbol === selected)?.iconUrl ??
             icons.logoMark,
         }
       : null;
   const chips = extra
     ? [creatorsPair, memesPair, ...featuredPairs, extra]
     : [creatorsPair, memesPair, ...featuredPairs];
-  const matches = pairChoices.filter((choice) => {
+  const matches = launchPairs.filter((choice) => {
     const needle = query.trim().toLowerCase();
     if (!needle) return true;
     return (
@@ -152,7 +165,7 @@ function PairFilters({
                 </button>
               </li>
               {matches.map((choice) => (
-                <li key={choice.address}>
+                <li key={choice.mint}>
                   <button
                     type="button"
                     role="option"
@@ -240,110 +253,6 @@ function formatCreated(value: string | undefined) {
     : days < 30 ? `${days} ${days === 1 ? "day" : "days"} ago`
     : `${months} ${months === 1 ? "mo" : "mos"} ago`;
   return { created, age: created };
-}
-
-function formatQuote(amount: string, decimals: number, symbol: string) {
-  if (
-    !/^\d+$/.test(amount) ||
-    !Number.isInteger(decimals) ||
-    decimals < 0 ||
-    decimals > 255 ||
-    !symbol
-  ) {
-    return "—";
-  }
-  const [whole, fraction = ""] = formatUnits(BigInt(amount), decimals).split(".");
-  const trimmed = fraction.slice(0, 4).replace(/0+$/, "");
-  return `${trimmed ? `${whole}.${trimmed}` : whole} ${symbol}`;
-}
-
-type MarketResponse = {
-  available?: boolean;
-  marketCap?: string;
-  quoteDecimals?: number;
-  quoteSymbol?: string;
-  marketCapUsd?: number;
-  priceUsd?: number | null;
-  phase?: number;
-};
-
-type MarketSnapshot = {
-  label: string;
-  usd: number | null;
-  phase: number | null;
-  price: string;
-};
-
-const emptyMarket: MarketSnapshot = {
-  label: "—",
-  usd: null,
-  phase: null,
-  price: "—",
-};
-
-function formatMarket(market: MarketResponse) {
-  if (!market.available) return "—";
-  if (typeof market.marketCapUsd === "number") return formatUsd(market.marketCapUsd);
-  if (
-    market.marketCap == null ||
-    market.quoteDecimals == null ||
-    !market.quoteSymbol
-  ) {
-    return "—";
-  }
-  return formatQuote(market.marketCap, market.quoteDecimals, market.quoteSymbol);
-}
-
-function useLoadedValues<T>(
-  tokens: string[],
-  load: (token: string) => Promise<T>,
-  fallback: T,
-) {
-  const key = tokens.join(",");
-  const [values, setValues] = useState<Record<string, T>>({});
-  const [settledKey, setSettledKey] = useState("");
-  useEffect(() => {
-    if (!key) return;
-    let cancelled = false;
-    void Promise.all(key.split(",").map(async (token) => {
-      try {
-        return [token.toLowerCase(), await load(token)] as const;
-      } catch {
-        return [token.toLowerCase(), fallback] as const;
-      }
-    })).then((rows) => {
-      if (!cancelled) {
-        setValues(Object.fromEntries(rows));
-        setSettledKey(key);
-      }
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [key, load, fallback]);
-  return { values, loading: key !== "" && key !== settledKey };
-}
-
-function priceLabel(value: number | null | undefined) {
-  return typeof value === "number" && Number.isFinite(value) ? formatPriceUsd(value) : "—";
-}
-
-function useTokenMarkets(tokens: string[]) {
-  const load = useMemo(
-    () => async (token: string): Promise<MarketSnapshot> => {
-      const response = await fetch(`/api/market/${token}`);
-      if (!response.ok) return emptyMarket;
-      const market = (await response.json()) as MarketResponse;
-      return {
-        label: formatMarket(market),
-        usd: typeof market.marketCapUsd === "number" ? market.marketCapUsd : null,
-        phase: typeof market.phase === "number" ? market.phase : null,
-        price: priceLabel(market.priceUsd),
-      };
-    },
-    [],
-  );
-  return useLoadedValues(tokens, load, emptyMarket);
 }
 
 function rankValue(value: number | null) {
@@ -639,43 +548,59 @@ function TokenTable({
 
 export function HomeDashboard() {
   const { search, setSearch } = useAppSearch();
-  const launches = useLaunches();
+  const coins = useQuery({
+    queryKey: ["pump-platform-coins"],
+    queryFn: async () => {
+      const base = process.env.NEXT_PUBLIC_ROVO_API_URL?.replace(/\/+$/, "");
+      if (!base) throw new Error("The Rovo API is not configured.");
+      const response = await fetch(`${base}/v1/pump/coins?limit=50`);
+      if (!response.ok) throw new Error("Could not load coins.");
+      const body = (await response.json()) as { coins: SavedPumpCoin[] };
+      return body.coins;
+    },
+  });
+  const markets = useQuery({
+    queryKey: ["pump-platform-markets", coins.data?.map((coin) => coin.mint).join(",")],
+    enabled: (coins.data?.length ?? 0) > 0,
+    queryFn: async () => {
+      const response = await fetch("/api/pump/markets", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ mints: coins.data!.map((coin) => coin.mint) }),
+      });
+      if (!response.ok) return [] as PumpMarketCoin[];
+      return (await response.json()) as PumpMarketCoin[];
+    },
+  });
   const [selectedPair, setSelectedPair] = useState("Creators");
   const [view, setView] = useState<View>("Trending");
-  const launchesData = launches.data?.launches;
-  const launchTokens = (launchesData ?? []).map((launch) => launch.token);
-  const markets = useTokenMarkets(launchTokens);
-  const listLoading = launches.isPending;
+  const listLoading = coins.isPending;
   const tokens = useMemo(() => {
-    const liveTokens = (launchesData ?? []).map((launch) => {
-      const choice = pairChoices.find(
-        (pair) =>
-          pair.address.toLowerCase() === launch.pairToken.toLowerCase(),
-      );
-      const market = markets.values[launch.token.toLowerCase()];
-      const launchedAt = new Date(launch.launchedAt).getTime();
-      const meme = launch.launchType === "meme";
+    const byMint = new Map((markets.data ?? []).map((market) => [market.mint, market]));
+    const liveTokens = (coins.data ?? []).map((coin) => {
+      const market = byMint.get(coin.mint);
+      const launchedAt = new Date(coin.createdAt).getTime();
+      const marketCapUsd = market?.market_cap_usd ?? market?.usd_market_cap ?? null;
+      const price =
+        marketCapUsd != null && marketCapUsd > 0 ? marketCapUsd / 1_000_000_000 : null;
+      const quoteMint = market?.quote_mint || coin.quoteMint;
+      const quote = launchPairs.find((pair) => pair.mint === quoteMint);
       return {
-        id: launch.token,
-        name: meme
-          ? launch.displayName || launch.handle
-          : `@${launch.handle}`,
-        symbol: meme
-          ? launch.handle.toUpperCase()
-          : launch.launchType === "self"
-            ? "Self-Rove"
-            : "Scout",
-        image: launch.imageUrl || "/figma-home/rovo-token.png",
-        marketCap: markets.loading ? null : (market?.label ?? "—"),
-        marketCapUsd: market?.usd ?? null,
-        price: markets.loading ? null : (market?.price ?? "—"),
-        ...formatCreated(launch.launchedAt),
+        id: coin.mint,
+        name: coin.name || market?.name || "Token",
+        symbol: coin.symbol || market?.symbol || coin.mint.slice(0, 4),
+        image: coin.imageUrl || market?.image_uri || "/figma-home/rovo-token.png",
+        marketCap: markets.isPending ? null : marketCapUsd == null ? "—" : formatUsd(marketCapUsd),
+        marketCapUsd,
+        price: markets.isPending ? null : price == null ? "—" : formatPriceUsd(price),
+        ...formatCreated(coin.createdAt),
         launchedAt: Number.isNaN(launchedAt) ? 0 : launchedAt,
-        graduated: market?.phase != null && market.phase !== 0,
-        pair: choice
-          ? { label: choice.symbol, icon: choice.iconUrl }
-          : { label: "Pair", icon: "/figma-home/rovo-mark.svg" },
-        meme,
+        graduated: market?.complete === true,
+        pair: {
+          label: quote?.symbol ?? "SOL",
+          icon: quote?.iconUrl || "/figma-home/rovo-mark.svg",
+        },
+        meme: true,
       };
     });
     const matched = liveTokens.filter((token) => {
@@ -683,17 +608,16 @@ export function HomeDashboard() {
         .toLowerCase()
         .includes(search.trim().toLowerCase());
       const matchesPair =
-        selectedPair === "Memes"
-          ? token.meme
-          : !selectedPair ||
-            selectedPair === "Creators" ||
-            token.pair.label === selectedPair;
+        selectedPair === "Memes" ||
+        !selectedPair ||
+        selectedPair === "Creators" ||
+        token.pair.label === selectedPair;
       return matchesSearch && matchesPair;
     });
     return arrangeTokens(matched, view);
-  }, [launchesData, markets, search, selectedPair, view]);
-  const launched = launches.data?.launches.length ?? 0;
-  const waitingForPhase = view === "Graduated" && markets.loading;
+  }, [coins.data, markets.data, markets.isPending, search, selectedPair, view]);
+  const launched = coins.data?.length ?? 0;
+  const waitingForPhase = view === "Graduated" && markets.isPending;
   const filtered =
     tokens.length === 0 &&
     launched > 0 &&
@@ -708,10 +632,9 @@ export function HomeDashboard() {
   };
   return (
     <div className={styles.dashboard}>
-      {launches.isError && (
+      {coins.isError && (
         <p role="alert" className="px-4 pt-5 text-sm text-danger">
-          Could not load launches from the Rovo API. Check that the API and
-          indexer are running.
+          Could not load coins from the Rovo API. Check that the API is running.
         </p>
       )}
       <MobileHome

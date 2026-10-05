@@ -142,6 +142,28 @@ export const rovoToken = pgTable("rovo_token", {
     .defaultNow(),
 });
 
+// Solana mints created on this platform. Market data stays on Pump's APIs.
+export const pumpCoins = pgTable(
+  "pump_coins",
+  {
+    mint: text("mint").primaryKey(),
+    name: text("name"),
+    symbol: text("symbol"),
+    imageUrl: text("image_url"),
+    metadataUri: text("metadata_uri"),
+    quoteMint: text("quote_mint"),
+    launcherWallet: text("launcher_wallet"),
+    signature: text("signature"),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (table) => [index("pump_coins_created_at_idx").on(table.createdAt)],
+);
+
 export const indexerState = pgTable("indexer_state", {
   chainId: integer("chain_id").primaryKey(),
   finalizedBlock: bigint("finalized_block", { mode: "bigint" }).notNull(),

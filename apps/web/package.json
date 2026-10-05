@@ -12,6 +12,8 @@
   },
   "dependencies": {
     "@privy-io/react-auth": "^3.45.0",
+    "@pump-fun/pump-sdk": "2.0.0",
+    "@pump-fun/pump-swap-sdk": "1.20.0",
     "@raydium-io/raydium-sdk-v2": "0.2.72-alpha",
     "@solana-program/memo": "^0.15.0",
     "@solana-program/system": "^0.15.0",

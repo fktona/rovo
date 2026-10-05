@@ -8,6 +8,7 @@ import { XApiProfileResolver } from "./x.js";
 import { selectXTokens, XOAuth } from "./x-auth.js";
 import { loadXOauthTokens, saveXOauthTokens } from "./x-tokens.js";
 import { loadRovoToken, saveRovoToken } from "./rovo-token.js";
+import { getPumpCoin, listPumpCoins, savePumpCoin } from "./pump-coins.js";
 import { createPublicClient, http, parseAbi } from "viem";
 import { createLaunchSyncClient, indexLaunchImmediately, runLaunchSync } from "./launch-sync.js";
 
@@ -90,6 +91,9 @@ const app = buildServer({
   replaceXTokens: (input) => xOauth.replace(input.accessToken, input.refreshToken),
   getRovoToken: () => loadRovoToken(db),
   setRovoToken: (address) => saveRovoToken(db, address),
+  listPumpCoins: (limit) => listPumpCoins(db, limit),
+  getPumpCoin: (mint) => getPumpCoin(db, mint),
+  savePumpCoin: (input) => savePumpCoin(db, input),
   recordLaunch: async (input) => {
     await indexLaunchImmediately({
       db,

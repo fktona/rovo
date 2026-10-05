@@ -11,7 +11,7 @@ export function ScoutedBy({ scout }: { scout: ScoutProfile }) {
     </>
   );
   const className = "inline-flex min-w-0 max-w-full items-center gap-2 active:opacity-70";
-  if (scout.token) {
+  if (scout.token && !scout.token.startsWith("0x")) {
     return (
       <Link href={`/token/${scout.token}`} className={className}>
         {face}

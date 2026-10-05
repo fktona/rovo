@@ -1,4 +1,3 @@
-import { isAddress } from "viem";
 import { PublicKey } from "@solana/web3.js";
 import { TokenPage } from "@/components/token/token-page";
 
@@ -16,10 +15,10 @@ export default async function TokenAddressPage({
   params: Promise<{ address: string }>;
 }) {
   const { address } = await params;
-  if (!isAddress(address) && !isSolanaMint(address)) {
+  if (!isSolanaMint(address)) {
     return (
       <main className="px-6 py-16 text-foreground">
-        <p>This token address is not valid.</p>
+        <p>This token address is not a Solana mint.</p>
       </main>
     );
   }

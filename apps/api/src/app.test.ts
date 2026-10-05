@@ -385,4 +385,71 @@ describe("Rovo API", () => {
     });
     expect(claim.statusCode).toBe(200);
   });
+
+  it("saves a created Pump mint and lists it", async () => {
+    const mint = "Hg5Ja55T5wESq4vyFoiVCMeHXtGyVA69X2UHq8hgpump";
+    const coins = new Map<string, {
+      mint: string;
+      name: string | null;
+      symbol: string | null;
+      imageUrl: string | null;
+      metadataUri: string | null;
+      quoteMint: string | null;
+      launcherWallet: string | null;
+      signature: string | null;
+      createdAt: string;
+      updatedAt: string;
+    }>();
+    const app = buildServer({
+      repository: new MemoryRovoRepository(),
+      identityVerifier: { async verify() { throw new Error("unused"); } },
+      attestationService: {
+        async issueSelfRove() { throw new Error("unused"); },
+        async issueScout() { throw new Error("unused"); },
+        async issueClaim() { throw new Error("unused"); },
+      } as unknown as Pick<IdentityAttestationService, "issueSelfRove" | "issueScout" | "issueClaim">,
+      listPumpCoins: async (limit) => [...coins.values()].slice(0, limit),
+      getPumpCoin: async (address) => coins.get(address) ?? null,
+      savePumpCoin: async (input) => {
+        const now = "2026-10-03T06:10:00.000Z";
+        const saved = {
+          mint: input.mint,
+          name: input.name ?? coins.get(input.mint)?.name ?? null,
+          symbol: input.symbol ?? null,
+          imageUrl: input.imageUrl ?? null,
+          metadataUri: input.metadataUri ?? null,
+          quoteMint: input.quoteMint ?? null,
+          launcherWallet: input.launcherWallet ?? null,
+          signature: input.signature ?? null,
+          createdAt: coins.get(input.mint)?.createdAt ?? now,
+          updatedAt: now,
+        };
+        coins.set(input.mint, saved);
+        return saved;
+      },
+    });
+    const missing = await app.inject({ method: "GET", url: `/v1/pump/coins/${mint}` });
+    expect(missing.statusCode).toBe(404);
+    const invalid = await app.inject({
+      method: "POST",
+      url: "/v1/pump/coins",
+      payload: { mint: "not-a-mint" },
+    });
+    expect(invalid.statusCode).toBe(400);
+    const saved = await app.inject({
+      method: "POST",
+      url: "/v1/pump/coins",
+      payload: {
+        mint,
+        name: "baton",
+        symbol: "baton",
+        quoteMint: "pumpCmXqMfrsAkQ5r49WcJnRayYRqmXz6ae8H7H9Dfn",
+      },
+    });
+    expect(saved.statusCode).toBe(200);
+    expect(saved.json().mint).toBe(mint);
+    const listed = await app.inject({ method: "GET", url: "/v1/pump/coins" });
+    expect(listed.json().coins).toHaveLength(1);
+    expect(listed.json().coins[0].symbol).toBe("baton");
+  });
 });

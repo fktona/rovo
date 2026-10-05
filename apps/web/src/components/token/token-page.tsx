@@ -137,10 +137,10 @@ function MobileTokenPage({
         {tab === "Details" ? (
           <div className="mt-5 text-sm">
             {[
-              ["Network", "Robinhood"],
+              ["Network", "Solana"],
               ["Token", data.handle ? `@${data.handle}` : "—"],
               ["Paired with", data.pairLabel],
-              ["Contract", data.valid ? shortAddress(token) : "—"],
+              ["Mint", data.valid ? shortAddress(token) : "—"],
               ["Status", data.status ?? "—"],
             ].map(([label, value], index) => (
               <div
@@ -370,7 +370,7 @@ export function TokenPage({ token }: { token: string }) {
               <table className="w-full min-w-[36rem] border-separate border-spacing-y-4 text-left text-[13px] font-medium">
                 <thead className="text-muted">
                   <tr>
-                    {["Time", "Type", "USD", "ETH", "MCAP", "Wallet"].map(
+                    {["Time", "Type", "USD", "Quote", "MCAP", "Wallet"].map(
                       (label) => (
                         <th key={label} className="px-3 font-medium">
                           {label}
@@ -468,41 +468,10 @@ export function TokenPage({ token }: { token: string }) {
         <section className="rounded-[10px] bg-surface-raised px-6 py-4">
           <h2 className="text-base text-foreground">How fees work</h2>
           <p className="mt-3 max-w-md text-sm font-medium text-muted">
-            Trading fees are routed between the creator, holders and platform
-            according to the market state.
+            Creator fees accrue in the fee vault. SOL and USDC use Pump&apos;s
+            creator schedule. Any other quote locks a 2% creator fee. Pump
+            keeps its own protocol fee. These coins do not pay holder rewards.
           </p>
-          <div className="mt-6 flex h-2.5 overflow-hidden rounded-full">
-            {(data.feeParts.length > 0
-              ? data.feeParts
-              : [
-                  { key: "creator", label: "Creators", color: "#43e660", width: 70, usd: "—" },
-                  { key: "holders", label: "Holders", color: "#9945ff", width: 20, usd: "—" },
-                  { key: "platform", label: "Platform", color: "#fbad15", width: 10, usd: "—" },
-                ]
-            ).map((part) => (
-              <span
-                key={part.key}
-                className="h-full"
-                style={{ width: `${part.width}%`, background: part.color }}
-              />
-            ))}
-          </div>
-          <div className="mt-4 flex flex-wrap gap-3 text-xs font-medium text-muted">
-            {(data.feeParts.length > 0
-              ? data.feeParts
-              : [
-                  { key: "creator", label: "Creators", color: "#43e660", width: 70, usd: "—" },
-                  { key: "holders", label: "Holders", color: "#9945ff", width: 20, usd: "—" },
-                  { key: "platform", label: "Platform", color: "#fbad15", width: 10, usd: "—" },
-                ]
-            ).map((part) => (
-              <span key={part.key} className="inline-flex items-center gap-1">
-                <i className="size-[9px] rounded-[1px]" style={{ background: part.color }} />
-                {part.label} {Number.isInteger(Math.round(part.width)) ? Math.round(part.width) : part.width.toFixed(1)}%
-                {part.usd !== "—" ? ` · ${part.usd}` : ""}
-              </span>
-            ))}
-          </div>
         </section>
       </main>
     </>

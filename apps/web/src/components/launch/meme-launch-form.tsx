@@ -18,11 +18,11 @@ export function MemeLaunchForm({
   onTelegram,
   twitter,
   onTwitter,
-  tax,
-  onTax,
+  creatorFee,
   preview,
   onImage,
   pairs,
+  pairsMessage = "No pair tokens match.",
   pairKind,
   onPairKind,
   search,
@@ -52,11 +52,11 @@ export function MemeLaunchForm({
   onTelegram: (value: string) => void;
   twitter: string;
   onTwitter: (value: string) => void;
-  tax: number;
-  onTax: (value: number) => void;
+  creatorFee: string;
   preview: string | null;
   onImage: (file: File | undefined) => void;
   pairs: readonly LaunchPair[];
+  pairsMessage?: string;
   pairKind: PairKind;
   onPairKind: (value: PairKind) => void;
   search: string;
@@ -75,7 +75,7 @@ export function MemeLaunchForm({
   onLaunch: () => void;
 }) {
   const firstBuy = hasOpeningBuy
-    ? `${openingAmount.trim()} SOL`
+    ? `${openingAmount.trim()} ${paySymbol}`
     : "Skipped";
   return (
     <div className="mt-8 grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
@@ -126,24 +126,14 @@ export function MemeLaunchForm({
           <input value={telegram} onChange={(event) => onTelegram(event.target.value)} placeholder="Telegram" aria-label="Telegram" className={field} />
         </div>
 
-        <div>
+        <div className="rounded-xl bg-surface px-3 py-3">
           <div className="flex items-baseline justify-between">
-            <p className="text-sm font-medium">Creator tax</p>
-            <p className="text-sm text-accent">{tax.toFixed(1)}%</p>
+            <p className="text-sm font-medium">Creator fee</p>
+            <p className="text-sm text-accent">{creatorFee}</p>
           </div>
           <p className="mt-1 text-xs leading-5 text-muted">
-            Optional. An admin claims this with the scout and profile fees.
+            Quote pairs other than SOL and USDC lock a 2% creator fee. SOL and USDC use Pump&apos;s schedule.
           </p>
-          <input
-            type="range"
-            min={0}
-            max={5}
-            step={0.1}
-            value={tax}
-            aria-label="Creator tax"
-            onChange={(event) => onTax(Number(event.target.value))}
-            className="mt-3 w-full accent-accent"
-          />
         </div>
 
         <div>
@@ -193,13 +183,7 @@ export function MemeLaunchForm({
                     selected ? "border border-accent" : "border border-transparent"
                   }`}
                 >
-                  <img
-                    src={pair.iconUrl}
-                    alt=""
-                    width={28}
-                    height={28}
-                    className="size-7 shrink-0 rounded-full object-contain"
-                  />
+                  <PairIcon iconUrl={pair.iconUrl} label={pair.symbol} />
                   <span className="min-w-0">
                     <strong className="block truncate text-sm font-medium">{pair.symbol}</strong>
                     <small className="block truncate text-xs text-muted">{pair.name}</small>
@@ -209,14 +193,14 @@ export function MemeLaunchForm({
             })}
           </div>
           {pairs.length === 0 && (
-            <p className="mt-3 text-sm text-muted">No pair tokens match.</p>
+            <p className="mt-3 text-sm text-muted">{pairsMessage}</p>
           )}
         </div>
 
         <div>
           <p className="text-sm font-medium">Initial buy</p>
           <p className="mt-1 text-xs text-muted">
-            Optional first buy in SOL. If the pair is not SOL, Raydium swaps SOL into that token before the launch.
+            Optional. You pay this in {paySymbol}. A blank amount creates the coin only.
           </p>
           <input
             value={openingAmount}
@@ -268,7 +252,7 @@ export function MemeLaunchForm({
         </div>
         <dl className="mt-5 space-y-3 text-sm">
           <SummaryRow label="Paired with" value={selectedPair?.symbol ?? "—"} />
-          <SummaryRow label="Creator tax" value={`${tax.toFixed(1)}%`} />
+          <SummaryRow label="Creator fee" value={creatorFee} />
           {/* <SummaryRow label="Tax destination" value="Admin treasury" /> */}
           <SummaryRow label="First buy" value={firstBuy} />
         </dl>
@@ -285,6 +269,25 @@ export function MemeLaunchForm({
         </button>
       </aside>
     </div>
+  );
+}
+
+function PairIcon({ iconUrl, label }: { iconUrl: string; label: string }) {
+  if (!iconUrl) {
+    return (
+      <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-surface-raised text-[10px] font-semibold uppercase">
+        {label.slice(0, 1) || "?"}
+      </span>
+    );
+  }
+  return (
+    <img
+      src={iconUrl}
+      alt=""
+      width={28}
+      height={28}
+      className="size-7 shrink-0 rounded-full object-contain"
+    />
   );
 }
 
